@@ -236,16 +236,27 @@
 
         const links = document.querySelectorAll('.nav-link');
         function triggerRandomGlitch() {
-            const batchSize = Math.floor(Math.random() * 2) + 1;
-            for(let i = 0; i < batchSize; i++) {
-                const target = links[Math.floor(Math.random() * links.length)];
-                if (target && !target.classList.contains('glitch-active')) {
-                    target.classList.add('glitch-active');
-                    setTimeout(() => { target.classList.remove('glitch-active'); }, Math.random() * 400 + 200);
-                }
-            }
-            setTimeout(triggerRandomGlitch, Math.random() * 2500 + 800);
+    const target = links[Math.floor(Math.random() * links.length)];
+    if (target) {
+        // Store original glitch text
+        const originalGlitch = target.getAttribute('data-glitch');
+        const altGlitch = target.getAttribute('data-glitch-alt');
+
+        // 50% chance to swap to the hybrid version during the glitch
+        if (altGlitch && Math.random() > 0.5) {
+            target.setAttribute('data-glitch', altGlitch);
         }
+
+        target.classList.add('glitch-active');
+        
+        setTimeout(() => {
+            target.classList.remove('glitch-active');
+            // Reset back to original so it doesn't get stuck
+            target.setAttribute('data-glitch', originalGlitch);
+        }, 300);
+    }
+    setTimeout(triggerRandomGlitch, Math.random() * 4000 + 2000);
+}
         setTimeout(triggerRandomGlitch, 1500);
     </script>
 </body>
