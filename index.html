@@ -7,72 +7,52 @@
     <title>Twisted Duality | Archive</title>
     <link href="https://fonts.googleapis.com/css2?family=WDXL+Lubrifont+JP+N&display=swap" rel="stylesheet">
     <style>
-        /* BRAND FONT & WHITE HOVER OVERRIDE */
-        #about-sector, 
-        #about-sector p, 
-        #about-sector span, 
-        #about-sector .sync-group, 
-        #about-sector .lore-glitch {
-            font-family: 'WDXL Lubrifont JP N', sans-serif !important;
-            transition: color 0.2s ease;
-        }
-
-        /* FORCE WHITE ON HOVER FOR EVERYTHING INSIDE ORANGE BOX */
-        #about-sector .sync-group:hover,
-        #about-sector .lore-glitch:hover,
-        #about-sector .nav-link:hover,
-        #about-sector .close-btn-aligned:hover,
-        #about-sector span:hover {
-            color: #ffffff !important;
-        }
-
-        /* ENSURE GLITCH OVERLAYS ALSO TURN WHITE */
-        #about-sector .nav-link:hover::after, 
-        #about-sector .nav-link.glitch-active::after,
-        #about-sector .lore-glitch:hover::after, 
-        #about-sector .lore-glitch.glitch-active::after,
-        #about-sector .close-btn-aligned:hover::after {
-            color: #ffffff !important;
-        }
-        /* THE PIXEL-PERFECT ALIGNMENT FIX */
-        .close-btn-aligned {
-            display: inline-block !important; /* Forces it to respect width/height */
-            height: 30px;                     /* Standardize the box height */
-            line-height: 30px;                /* Centers text perfectly inside that height */
-            width: 160px;                     /* Give it enough room for the longest word */
-            text-align: center;
-            vertical-align: middle;
-            border: 1px solid rgba(0,0,0,0.1);
-            padding: 0 !important;            /* Remove old padding that causes shifting */
-            box-sizing: border-box;
-        }
-
-        /* Ensure the glitch overlay perfectly matches the parent box */
-        .close-btn-aligned::after {
-            top: 0;
-            left: 0;
-            height: 100%;
-            line-height: 30px;                /* Match the parent's line-height */
-        }
-        /* THE ORANGE ABOUT TERMINAL */
+        /* THE ORANGE ABOUT TERMINAL - NUKE PROTOCOL */
         #about-sector {
             display: none; 
             margin-top: 20px; 
             margin-bottom: 40px; 
             padding: 30px;
-            background: #de7029 !important; /* Force the Orange */
+            background: #de7029 !important;
             color: #000000;      
             text-align: left; 
             border: 2px solid #000000;
             box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+            
+            /* LOCAL VARIABLE OVERRIDE: Forces all glitch/sync logic to turn WHITE */
+            --glitch-color: #ffffff;
+            --highlight-color: #ffffff;
         }
 
-        /* OVERRIDE GLITCH COLOR INSIDE ORANGE BOX */
-        #about-sector .nav-link:hover::after, 
-        #about-sector .nav-link.glitch-active::after,
-        #about-sector .lore-glitch:hover::after, 
-        #about-sector .lore-glitch.glitch-active::after {
-            color: #ffffff !important; /* GLITCH TURNS WHITE OVER ORANGE */
+        /* FORCE BRAND FONT & HOVER ON ALL LORE ELEMENTS */
+        #about-sector .sync-group,
+        #about-sector .lore-glitch,
+        #about-sector .close-btn-aligned,
+        #about-sector span {
+            font-family: 'WDXL Lubrifont JP N', sans-serif !important;
+            transition: color 0.2s ease;
+        }
+
+        /* RAW HOVER LOGIC FOR NON-GLITCH WORDS */
+        #about-sector .sync-group:hover,
+        #about-sector span:hover {
+            color: #ffffff !important;
+        }
+
+        /* THE PIXEL-PERFECT ALIGNMENT FIX */
+        .close-btn-aligned {
+            display: inline-block !important;
+            height: 30px;
+            line-height: 30px;
+            width: 160px;
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 0 !important;
+            box-sizing: border-box;
+        }
+        .close-btn-aligned::after {
+            top: 0; left: 0; height: 100%; line-height: 30px;
         }
 
         /* TIGHTEN UP LOG START TEXT */
