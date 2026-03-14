@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neural Archive | afest.io</title>
+    <title>Twisted Duality | Archive</title>
     <link href="https://fonts.googleapis.com/css2?family=Lexend+Exa:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #ffffff;
             --text-color: #000000;
-            --glitch-color: #de7029; /* Hazard Orange */
-            --font-main: 'Lexend Exa', sans-serif; /* Fallback for Lubrifont style */
+            --glitch-color: #de7029; 
         }
 
         body, html {
@@ -18,80 +17,57 @@
             padding: 0;
             background-color: var(--bg-color);
             color: var(--text-color);
-            font-family: var(--font-main);
-            overflow-x: hidden;
+            font-family: 'Lexend Exa', sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
         }
 
-        /* Perspective Grid Background */
+        /* Background using your uploaded JPG */
         .grid-bg {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: 
-                linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            perspective: 1000px;
-            transform: rotateX(60deg);
+            background: url('web-background.jpg') no-repeat center center;
+            background-size: cover;
             z-index: -1;
         }
 
         .container {
             width: 100%;
-            max-width: 400px; /* 4:5 Active Zone */
+            max-width: 400px;
             text-align: center;
-            padding: 20px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.8); /* Slight overlay for readability */
+            backdrop-filter: blur(5px);
         }
 
-        .header-logo {
-            font-weight: 700;
-            letter-spacing: 0.5em;
-            margin-bottom: 50px;
-            text-transform: uppercase;
-        }
+        .main-logo { width: 100%; max-width: 300px; margin-bottom: 40px; }
+        .subtext-header { width: 100%; max-width: 220px; margin-bottom: 20px; margin-top: 20px; }
 
-        .sector {
-            margin-bottom: 40px;
-        }
-
-        .sector-title {
-            font-size: 0.8em;
-            letter-spacing: 0.3em;
-            opacity: 0.5;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-        }
+        .sector { margin-bottom: 50px; }
 
         .nav-link {
             display: block;
             text-decoration: none;
             color: var(--text-color);
             font-size: 1.1em;
-            margin: 15px 0;
-            padding: 10px;
+            margin: 12px 0;
+            padding: 8px;
             position: relative;
-            transition: 0.2s;
             text-transform: lowercase;
+            font-weight: 400;
         }
 
-        /* Glitch Effect on Hover/Tap */
-        .nav-link:hover, .nav-link:active {
-            color: var(--glitch-color);
-        }
-
+        .nav-link:hover { color: var(--glitch-color); }
         .nav-link:hover::after {
             content: attr(data-glitch);
             position: absolute;
-            left: 0;
-            width: 100%;
-            text-align: center;
-            background: var(--bg-color);
+            left: 0; width: 100%; text-align: center;
+            background: white;
             animation: glitch 0.3s steps(2) infinite;
         }
 
@@ -101,32 +77,26 @@
             100% { transform: translate(0); }
         }
 
-        .footer-log {
-            font-size: 0.6em;
-            margin-top: 60px;
-            opacity: 0.3;
-            letter-spacing: 0.1em;
-        }
+        .footer-log { font-size: 0.6em; margin-top: 40px; opacity: 0.4; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
     <div class="grid-bg"></div>
     <div class="container">
-        <img src="Twisted_Duality_nosubtext.png" alt="Twisted Duality" style="width: 100%; max-width: 280px; margin-bottom: 50px; display: block; margin-left: auto; margin-right: auto;">
+        <img src="Twisted_Duality_nosubtext.png" alt="Twisted Duality" class="main-logo">
 
         <div class="sector">
-            <div class="sector-title">ORIGINALS</div>
-            <a href="https://open.spotify.com/artist/3hvsLZ6fWjtB6y6eRcYUat" class="nav-link" data-glitch="[ 同期：音声 ]">/spotify</a>
-            <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ アップルと同期：音声 ]">/apple-music</a>
-            <a href="https://soundcloud.com/twysted1" class="nav-link" data-glitch="[ 起源合成 ]">/soundcloud</a>
+            <img src="Twisted_Duality_Originals_subtext.png" alt="Originals" class="subtext-header">
+            <a href="https://open.spotify.com/artist/3hvsLZ6fWjtB6y6eRcYUat" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
+            <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ アップルと同期 ]">/apple-music</a>
             <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
             <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
-            <a href="https://www.tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
+            <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
         </div>
 
         <div class="sector">
-            <div class="sector-title">RE/IMAGINED</div>
-            <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 派生波形 ]">/soundcloud</a>
+            <img src="Twisted_Duality_Reimagined_subtext.png" alt="Reimagined" class="subtext-header">
+            <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">/soundcloud</a>
         </div>
 
         <div class="footer-log">
