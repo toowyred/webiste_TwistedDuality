@@ -7,62 +7,7 @@
     <title>Twisted Duality | Archive</title>
     <link href="https://fonts.googleapis.com/css2?family=WDXL+Lubrifont+JP+N&display=swap" rel="stylesheet">
     <style>
-        /* THE ORANGE ABOUT TERMINAL - NUKE PROTOCOL */
-        #about-sector {
-            display: none; 
-            margin-top: 20px; 
-            margin-bottom: 40px; 
-            padding: 30px;
-            background: #de7029 !important;
-            color: #000000;      
-            text-align: left; 
-            border: 2px solid #000000;
-            box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
-            
-            /* LOCAL VARIABLE OVERRIDE: Forces all glitch/sync logic to turn WHITE */
-            --glitch-color: #ffffff;
-            --highlight-color: #ffffff;
-        }
-
-        /* FORCE BRAND FONT & HOVER ON ALL LORE ELEMENTS */
-        #about-sector .sync-group,
-        #about-sector .lore-glitch,
-        #about-sector .close-btn-aligned,
-        #about-sector span {
-            font-family: 'WDXL Lubrifont JP N', sans-serif !important;
-            transition: color 0.2s ease;
-        }
-
-        /* RAW HOVER LOGIC FOR NON-GLITCH WORDS */
-        #about-sector .sync-group:hover,
-        #about-sector span:hover {
-            color: #ffffff !important;
-        }
-
-        /* THE PIXEL-PERFECT ALIGNMENT FIX */
-        .close-btn-aligned {
-            display: inline-block !important;
-            height: 30px;
-            line-height: 30px;
-            width: 160px;
-            text-align: center;
-            vertical-align: middle;
-            border: 1px solid rgba(0,0,0,0.1);
-            padding: 0 !important;
-            box-sizing: border-box;
-        }
-        .close-btn-aligned::after {
-            top: 0; left: 0; height: 100%; line-height: 30px;
-        }
-
-        /* TIGHTEN UP LOG START TEXT */
-        #about-sector .log-header {
-            font-size: 0.7rem; 
-            letter-spacing: 2px; 
-            margin-bottom: 15px; 
-            color: rgba(0,0,0,0.6); 
-            font-weight: bold;
-        }
+        /* --- GLOBAL VARIABLES & RESET --- */
         :root {
             --bg-color: transparent;
             --text-color: #000000;
@@ -81,43 +26,107 @@
             padding-top: 10vh;
             overflow-x: hidden;
         }
-        
-        #lang-container {
-            transition: opacity 0.3s ease-out; 
-        }
 
-        .fade-out {
-            opacity: 0 !important;
-            pointer-events: none; 
-        }
-
+        /* --- THE GRID ANCHOR --- */
         .grid-bg {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;  /* Viewport Width */
-            height: 100vh; /* Viewport Height */
+            width: 100vw;  
+            height: 100vh; 
             background: url('web-background.png') no-repeat center center;
             background-size: 100% 100%;
             z-index: -1;
-            transform: translateZ(0); /* Hardware Acceleration Lock */
+            transform: translateZ(0); 
             -webkit-transform: translateZ(0);
         }
 
-        /* --- UI ELEMENTS --- */
+        /* --- UI ELEMENTS & LAYOUT --- */
+        .main-terminal { width: 100%; max-width: 400px; text-align: center; padding: 40px 20px; }
+        .main-logo { width: 100%; max-width: 280px; margin-bottom: 10px; display: block; margin: 0 auto; }
+        .subtext-header { width: 100%; max-width: 200px; margin: 15px auto 5px auto; display: block; }
+        .sector { margin-top: 0; margin-bottom: 30px; }
+
         .lang-switch {
             position: fixed; top: 25px; right: 30px;
             font-size: 0.85rem; letter-spacing: 1px; z-index: 100;
             display: flex; gap: 15px; background: rgba(255, 255, 255, 0.1);
             padding: 5px 10px; border-radius: 2px;
+            transition: opacity 0.3s ease-out; 
         }
 
         .lang-btn { cursor: pointer; opacity: 0.4; transition: opacity 0.3s; color: var(--text-color); }
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 1px solid var(--text-color); }
 
-        .main-terminal { width: 100%; max-width: 400px; text-align: center; padding: 40px 20px; }
-        .main-logo { width: 100%; max-width: 280px; margin-bottom: 10px; display: block; margin: 0 auto; }
-        .subtext-header { width: 100%; max-width: 200px; margin: 15px auto 5px auto; display: block; }
+        .fade-out { opacity: 0 !important; pointer-events: none; }
+        .lang-content { display: none; }
+        .lang-content.active { display: block; }
+
+        /* --- THE ORANGE TERMINAL (ABOUT SECTOR) --- */
+        #about-sector {
+            display: none; 
+            margin-top: 20px; 
+            margin-bottom: 40px; 
+            padding: 30px;
+            background: #de7029 !important; 
+            color: #000000;      
+            text-align: left; 
+            border: 2px solid #000000;
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+            
+            /* LOCAL VARIABLE OVERRIDE */
+            --glitch-color: #ffffff;
+            --highlight-color: #ffffff;
+        }
+
+        /* ORANGE TERMINAL: FONTS & CLEAN HOVERS */
+        #about-sector .sync-group,
+        #about-sector .lore-glitch,
+        #about-sector .close-btn-aligned,
+        #about-sector span {
+            font-family: 'WDXL Lubrifont JP N', sans-serif !important;
+            transition: color 0.2s ease;
+        }
+
+        #about-sector .sync-group:hover {
+            color: #ffffff !important;
+        }
+
+        #about-sector .lore-glitch:hover,
+        #about-sector .nav-link:hover,
+        #about-sector .close-btn-aligned:hover {
+            color: transparent !important; /* Base text vanishes so glitch doesn't overlap */
+        }
+
+        #about-sector .lore-glitch:hover::after,
+        #about-sector .nav-link:hover::after,
+        #about-sector .close-btn-aligned:hover::after {
+            color: #ffffff !important; /* Glitch overlay turns white */
+        }
+
+        #about-sector .log-header {
+            font-size: 0.7rem; 
+            letter-spacing: 2px; 
+            margin-bottom: 15px; 
+            color: rgba(0,0,0,0.6); 
+            font-weight: bold;
+        }
+
+        /* PIXEL-PERFECT ALIGNMENT FOR CLOSE BUTTONS */
+        .close-btn-aligned {
+            display: inline-block !important;
+            height: 30px;
+            line-height: 30px;
+            width: 200px; 
+            text-align: center;
+            vertical-align: middle;
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 0 !important;
+            box-sizing: border-box;
+        }
+        .close-btn-aligned::after {
+            top: 0; left: 0; height: 100%; line-height: 30px; width: 100%;
+        }
 
         /* --- GLITCH LOGIC --- */
         .originals-logo { animation: glitchUrsprung 12s infinite; }
@@ -175,9 +184,6 @@
         .rede-toggle::after { content: "re"; animation: redeCycle 1s infinite; }
         @keyframes redeCycle { 0%, 49% { content: "re"; } 50%, 100% { content: "de"; } }
 
-        .lang-content { display: none; }
-        .lang-content.active { display: block; }
-
         /* --- THE DICTIONARY TOOLTIP --- */
         #lore-tooltip {
             position: absolute; display: none; width: 240px;
@@ -201,7 +207,6 @@
             line-height: 1.6;
             text-transform: uppercase;
         }
-
 
         [lang="en"] .lang-de-only { display: none; }
         [lang="de"] .lang-en-only { display: none; }
@@ -293,27 +298,29 @@
             <div class="lang-en-only">
                 <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
                 <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                    <span class="lore-glitch stationary-glitch dictionary-trigger" data-glitch="双極の螺旋">Twisted Duality</span> // <span class="sync-group">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group">変異</span>
-                    We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span> <span class="lore-glitch" data-glitch="[KLANG]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes. 
+                    <span class="lore-glitch stationary-glitch dictionary-trigger" data-glitch="双極の螺旋">Twisted Duality</span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span>
+                    We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes. 
                     From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel. 
                     Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
                 </p>
                 <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ close_file ]</a>
             </div>
+            
             <div class="lang-de-only">
                 <div class="log-header">//: LOG_START [PERSONEN_ARCHIV]</div>
                 <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                    <span class="lore-glitch stationary-glitch dictionary-trigger" data-glitch="双極の螺旋">Twisted Duality</span> // <span class="sync-group">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group">変異</span>
+                    <span class="lore-glitch stationary-glitch dictionary-trigger" data-glitch="双極の螺旋">Twisted Duality</span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span>
                     Wir <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruieren</span> <span class="lore-glitch" data-glitch="[SOUND]">[KLANG]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> durch <span class="sync-group sync-henyi">extreme Manipulation</span>. 
                     Von der Schönheit des Lichts bis zum Zerfall der Schatten—der Herzschlag des Universums. 
                     Hier werden Welten aufgelöst und <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">NEU ERDACHT</span>.
                 </p>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ datei_schließen ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ brenne_diese_datei ]</a>
             </div>
         </div>
     </div>
 
     <script>
+        // --- MULTILINGUAL LOGIC ---
         const langState = { current: 'en' };
         
         function setLanguage(lang) {
@@ -388,12 +395,14 @@
         }
         setTimeout(triggerRandomGlitch, 1500);
 
+        // --- ABOUT SECTOR TOGGLE ---
         function toggleAbout() {
             const about = document.getElementById('about-sector');
             about.style.display = (about.style.display === 'none' || about.style.display === '') ? 'block' : 'none';
             if (about.style.display === 'block') about.scrollIntoView({ behavior: 'smooth' });
         }
-        // Scroll Sensor for Language Buttons
+
+        // --- SCROLL SENSOR (LANGUAGE FADE) ---
         window.addEventListener('scroll', function() {
             const langBox = document.getElementById('lang-container');
             if (!langBox) return; 
