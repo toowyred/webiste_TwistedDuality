@@ -9,7 +9,7 @@
         :root {
             --bg-color: #ffffff;
             --text-color: #000000;
-            --glitch-color: #de7029; 
+            --glitch-color: #de7029;
         }
 
         body, html {
@@ -24,7 +24,7 @@
             align-items: center;
         }
 
-        /* Background using your uploaded JPG */
+        /* Background using your uploaded PNG */
         .grid-bg {
             position: fixed;
             top: 0;
@@ -36,6 +36,7 @@
             z-index: -1;
         }
 
+        /* The transparent container */
         .container {
             width: 100%;
             max-width: 400px;
@@ -44,36 +45,48 @@
             background: transparent;
         }
 
-        .subtext-header {
-    width: 100%;
-    max-width: 200px;
-    height: auto;
-    margin-top: 0;
-    margin-bottom: 5px; /* Tightens the gap to the links */
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.sector {
-    margin-bottom: 30px;
-    margin-top: 0; /* Removes extra padding above the link list */
-}
-
-        .nav-link {
+        /* Tightened Logos */
+        .main-logo {
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 0;
             display: block;
-            text-decoration: none;
-            color: var(--text-color);
-            font-size: 1.1em;
-            margin: 12px 0;
-            padding: 8px;
-            position: relative;
-            text-transform: lowercase;
-            font-weight: 400;
+            margin-left: auto;
+            margin-right: auto;
         }
 
+        .subtext-header {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-top: 0;
+            margin-bottom: 5px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sector {
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        /* Link Styling */
+        .nav-link {
+            display: block;
+            margin: 15px 0;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            text-decoration: none;
+            text-transform: lowercase;
+            letter-spacing: 2px;
+            position: relative;
+            transition: color 0.1s;
+        }
+
+        /* Phantom Glitch (Invisible Base Text) */
         .nav-link:hover, .nav-link.glitch-active {
-            color: transparent; /* This makes the English text instantly vanish */
+            color: transparent;
         }
 
         .nav-link:hover::after, .nav-link.glitch-active::after {
@@ -82,82 +95,21 @@
             left: 0;
             width: 100%;
             text-align: center;
-            background: transparent; /* Removes the ugly white sticker box */
-            color: var(--glitch-color); /* Applies the hazard orange to the Japanese text */
+            background: transparent;
+            color: var(--glitch-color);
             animation: glitch 0.3s steps(2) infinite;
         }
 
         @keyframes glitch {
-            0% { transform: translate(2px, -2px); clip-path: inset(10% 0 30% 0); }
-            50% { transform: translate(-2px, 2px); clip-path: inset(40% 0 10% 0); }
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
             100% { transform: translate(0); }
         }
 
-        .footer-log { font-size: 0.6em; margin-top: 40px; opacity: 0.4; letter-spacing: 0.1em; }
-    </style>
-</head>
-<body>
-    <div class="grid-bg"></div>
-    <div class="container">
-        <img src="Twisted_Duality_nosubtext.png" alt="Twisted Duality" class="main-logo">
-
-        <div class="sector">
-            <img src="Twisted_Duality_Originals_subtext.png" alt="Originals" class="subtext-header">
-            <a href="https://open.spotify.com/artist/3hvsLZ6fWjtB6y6eRcYUat" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
-            <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ アップルと同期 ]">/apple-music</a>
-            <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
-            <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
-            <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
-        </div>
-
-        <div class="sector">
-            <img src="Twisted_Duality_Reimagined_subtext.png" alt="Reimagined" class="subtext-header">
-            <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">/soundcloud</a>
-        </div>
-
-        <div class="footer-log">
-            [AU証: 核心] -> 接続 STATUS: ONLINE<br>
-            "TWO FREQUENCIES. ONE VESSEL."
-        </div>
-    </div>
-    <script>
-        const links = document.querySelectorAll('.nav-link');
-
-        // 1. Mobile Tap-Routing Logic (What you already added)
-        links.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault(); 
-                this.classList.add('glitch-active'); 
-                setTimeout(() => {
-                    window.location.href = this.href;
-                }, 400); 
-            });
-        });
-
-        // 2. Random Background Glitch Logic (The Ghost in the Machine)
-        function triggerRandomGlitch() {
-            if (links.length === 0) return;
-
-            // Pick one random link from the terminal
-            const randomLink = links[Math.floor(Math.random() * links.length)];
-
-            // Flash the glitch
-            randomLink.classList.add('glitch-active');
-
-            // Turn the glitch off after 300 milliseconds (a quick spark)
-            setTimeout(() => {
-                randomLink.classList.remove('glitch-active');
-            }, 300);
-
-            // Calculate a random time for the next glitch (between 2 and 6 seconds)
-            const nextGlitchTime = Math.random() * 4000 + 2000;
-            
-            // Loop the function
-            setTimeout(triggerRandomGlitch, nextGlitchTime);
-        }
-
-        // Start the random glitch cycle 2 seconds after the page loads
-        setTimeout(triggerRandomGlitch, 2000);
-    </script>
-</body>
-</html>
+        .footer-log {
+            margin-top: 40px;
+            font-size: 0.7rem;
+            opacity: 0.5;
