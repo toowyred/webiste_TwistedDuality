@@ -93,17 +93,25 @@
         }
 
         /* --- SUBLIMINAL GLITCH LOGOS --- */
-        .originals-logo { animation: glitchUrsprung 12s infinite; }
-        @keyframes glitchUrsprung {
-            0%, 96%, 99%, 100% { content: url('Twisted_Duality_Originals_subtext.png'); }
-            97%, 98% { content: url('Twisted_Duality_Originals_subtext_glitch_for_DE.png'); }
-        }
+.originals-logo { 
+    animation: glitchUrsprung 12s infinite; 
+}
 
-        .reimagined-logo { animation: glitchKonstruiert 7s infinite; }
-        @keyframes glitchKonstruiert {
-            0%, 93%, 97%, 100% { content: url('Twisted_Duality_Reimagined_subtext.png'); }
-            94%, 96% { content: url('Twisted_Duality_Reimagined_subtext_glitch_for_DE.png'); }
-        }
+@keyframes glitchUrsprung {
+    0%, 90%, 100% { content: url('Twisted_Duality_Originals_subtext.png'); }
+    /* This keeps the glitch visible for 5% of the 12s (about 0.6 seconds) */
+    92%, 97% { content: url('Twisted_Duality_Originals_subtext_glitch_for_DE.png'); }
+}
+
+.reimagined-logo { 
+    animation: glitchKonstruiert 7s infinite; 
+}
+
+@keyframes glitchKonstruiert {
+    0%, 85%, 100% { content: url('Twisted_Duality_Reimagined_subtext.png'); }
+    /* This keeps the glitch visible for 5% of the 7s (about 0.35 seconds) */
+    88%, 93% { content: url('Twisted_Duality_Reimagined_subtext_glitch_for_DE.png'); }
+}
 
         .sector { margin-bottom: 35px; }
 
