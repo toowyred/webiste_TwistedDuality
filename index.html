@@ -61,13 +61,19 @@
             font-weight: 400;
         }
 
-        .nav-link:hover { color: var(--glitch-color); }
-        .nav-link:hover::after {
+        .nav-link:hover, .nav-link.glitch-active {
+            color: var(--glitch-color);
+        }
+
+        .nav-link:hover::after, .nav-link.glitch-active::after {
             content: attr(data-glitch);
             position: absolute;
-            left: 0; width: 100%; text-align: center;
+            left: 0;
+            width: 100%;
+            text-align: center;
             background: white;
             animation: glitch 0.3s steps(2) infinite;
+        }
         }
 
         @keyframes glitch {
@@ -103,5 +109,44 @@
             "TWO FREQUENCIES. ONE VESSEL."
         </div>
     </div>
+    <script>
+        const links = document.querySelectorAll('.nav-link');
+
+        // 1. Mobile Tap-Routing Logic (What you already added)
+        links.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault(); 
+                this.classList.add('glitch-active'); 
+                setTimeout(() => {
+                    window.location.href = this.href;
+                }, 400); 
+            });
+        });
+
+        // 2. Random Background Glitch Logic (The Ghost in the Machine)
+        function triggerRandomGlitch() {
+            if (links.length === 0) return;
+
+            // Pick one random link from the terminal
+            const randomLink = links[Math.floor(Math.random() * links.length)];
+
+            // Flash the glitch
+            randomLink.classList.add('glitch-active');
+
+            // Turn the glitch off after 300 milliseconds (a quick spark)
+            setTimeout(() => {
+                randomLink.classList.remove('glitch-active');
+            }, 300);
+
+            // Calculate a random time for the next glitch (between 2 and 6 seconds)
+            const nextGlitchTime = Math.random() * 4000 + 2000;
+            
+            // Loop the function
+            setTimeout(triggerRandomGlitch, nextGlitchTime);
+        }
+
+        // Start the random glitch cycle 2 seconds after the page loads
+        setTimeout(triggerRandomGlitch, 2000);
+    </script>
 </body>
 </html>
