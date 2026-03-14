@@ -320,15 +320,18 @@
     setTimeout(triggerRandomGlitch, Math.random() * 4000 + 2000);
 }
         setTimeout(triggerRandomGlitch, 1500);
+    setTimeout(triggerRandomGlitch, 1500);
+
+        // --- THE ABOUT TOGGLE BRAIN ---
+        function toggleAbout() {
+            const about = document.getElementById('about-sector');
+            if (about.style.display === 'none' || about.style.display === '') {
+                about.style.display = 'block';
+                about.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                about.style.display = 'none';
+            }
+        }
     </script>
-function toggleAbout() {
-    const about = document.getElementById('about-sector');
-    if (about.style.display === 'none' || about.style.display === '') {
-        about.style.display = 'block';
-        about.scrollIntoView({ behavior: 'smooth' });
-    } else {
-        about.style.display = 'none';
-    }
-}
 </body>
 </html>
