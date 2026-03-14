@@ -173,6 +173,11 @@
 
         <!--/* LINK SECTION ENGLISH */-->
         <div id="content-en" class="lang-content active">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <!--/* LINK to About Me ENGLISH */-->
+        <a href="#" class="nav-link" onclick="toggleAbout()" data-glitch="[ 記憶: MEMORY ]">/about_me</a>
+    </div>
+
             <img src="Twisted_Duality_Originals_subtext.png" alt="ORIGINALS" class="subtext-header originals-logo">
             <div class="sector">
                 <a href="https://open.spotify.com/artist/6P2T8I0U7p6u4W7r6m8R5f" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
@@ -201,6 +206,33 @@
         <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ from_領コア ]</div>
         <div style="font-size: 0.8rem; letter-spacing: 1px;">SIGNAL STRENGTH: WEAK</div>
     </div>
+            
+
+    <!--/* ABOUT ME SECTION BOTH LANGUAGES */-->        
+    <div id="about-sector" style="display: none; margin-top: 20px; margin-bottom: 40px; padding: 20px; border: 1px solid rgba(0,0,0,0.2); background: rgba(255,255,255,0.02); text-align: left; border-left: 3px solid rgba(0,0,0,0.3);">
+    
+    <div class="lang-en-only">
+        <div style="font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 15px; color: #666;">//: LOG_START [PERSONA_ARCHIVE]</div>
+        <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+            <span style="font-weight: bold;">TWYSTED</span> // 創作 to 変異<br><br>
+            We re/de/construct [SOUND] + [EMOTION] into immersive landscapes with extreme sonic manipulation. 
+            From the melodic beauty of the light to the industrial decay of the shadows—this is the heartbeat of the Twisted Duality universe. 
+            Where existing worlds are unmade and <span style="letter-spacing: 2px;">REIMAGINED</span>.
+        </p>
+    </div>
+
+    <div class="lang-de-only">
+        <div style="font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 15px; color: #666;">//: LOG_START [PERSONEN_ARCHIV]</div>
+        <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+            <span style="font-weight: bold;">TWYSTED</span> // 創作 to 変異<br><br>
+            Wir re/de/konstruieren [KLANG] + [EMOTION] durch extreme manipulative Komposition. 
+            Von der melodischen Schönheit des Lichts bis zum industriellen Zerfall der Schatten—das ist der Herzschlag des Twisted Duality Universums. 
+            Hier werden bestehende Welten aufgelöst und <span style="letter-spacing: 2px;">NEU ERDACHT</span>.
+        </p>
+    </div>
+
+    <a href="#" onclick="toggleAbout()" class="nav-link" style="font-size: 0.7rem; display: inline; border: 1px solid rgba(0,0,0,0.1); padding: 5px 10px;">[ CLOSE_FILE ]</a>
+</div>
 
     <!--/* FOOTER SECTION ENGLISH */-->       
     <div class="footer-log">
@@ -209,7 +241,11 @@
     </div>
             
 <!--/* LINK SECTION GERMAN */-->
-</div> <div id="content-de" class="lang-content">
+<div id="content-de" class="lang-content">
+    <div style="text-align: center; margin-bottom: 20px;">
+        <!--/* LINK to About Me GERMAN */-->
+        <a href="#" class="nav-link" onclick="toggleAbout()" data-glitch="[ SPEICHER: 記憶 ]">/über_mich</a>
+    </div>
             <img src="Twisted_Duality_Originals_subtext.png" alt="URSPRUNG" class="subtext-header originals-logo">
             <div class="sector">
                 <a href="https://open.spotify.com/artist/6P2T8I0U7p6u4W7r6m8R5f" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
@@ -285,5 +321,14 @@
 }
         setTimeout(triggerRandomGlitch, 1500);
     </script>
+function toggleAbout() {
+    const about = document.getElementById('about-sector');
+    if (about.style.display === 'none' || about.style.display === '') {
+        about.style.display = 'block';
+        about.scrollIntoView({ behavior: 'smooth' });
+    } else {
+        about.style.display = 'none';
+    }
+}
 </body>
 </html>
