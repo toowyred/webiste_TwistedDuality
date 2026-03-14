@@ -62,7 +62,7 @@
         }
 
         .nav-link:hover, .nav-link.glitch-active {
-            color: var(--glitch-color);
+            color: transparent; /* This makes the English text instantly vanish */
         }
 
         .nav-link:hover::after, .nav-link.glitch-active::after {
@@ -71,7 +71,8 @@
             left: 0;
             width: 100%;
             text-align: center;
-            background: var(--bg-color);
+            background: transparent; /* Removes the ugly white sticker box */
+            color: var(--glitch-color); /* Applies the hazard orange to the Japanese text */
             animation: glitch 0.3s steps(2) infinite;
         }
 
