@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twisted Duality | Archive</title>
+    <link href="https://fonts.googleapis.com/css2?family=WDXL+Lubrifont+JP+N&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --glitch-color: #de7029;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'WDXL Lubrifont JP N', "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", "Segoe UI", sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Background using your uploaded PNG */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('web-background.png') no-repeat center center;
+            background-size: cover;
+            z-index: -1;
+        }
+
+        /* The transparent container */
+        .container {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            padding: 40px 20px;
+            background: transparent;
+        }
+
+        /* Tightened Logos */
+        .main-logo {
+            width: 100%;
+            max-width: 280px;
+            margin-bottom: 0;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .subtext-header {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-top: 0;
+            margin-bottom: 5px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .sector {
+            margin-bottom: 30px;
+            margin-top: 0;
+        }
+
+        /* Link Styling */
+        .nav-link {
+            display: block;
+            margin: 15px 0;
+            font-size: 1.2rem;
+            color: var(--text-color);
+            text-decoration: none;
+            text-transform: lowercase;
+            letter-spacing: 2px;
+            position: relative;
+            transition: color 0.1s;
+        }
+
+        /* Phantom Glitch (Invisible Base Text) */
+        .nav-link:hover, .nav-link.glitch-active {
+            color: transparent;
+        }
+
+        .nav-link:hover::after, .nav-link.glitch-active::after {
+            content: attr(data-glitch);
+            position: absolute;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            background: transparent;
+            color: var(--glitch-color);
+            animation: glitch 0.3s steps(2) infinite;
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .footer-log {
+            margin-top: 40px;
+            font-size: 0.7rem;
+            opacity: 0.5;
+            letter-spacing: 1px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grid-bg"></div>
+
+    <div class="container">
+        
+        <img src="Twisted_Duality_nosubtext.png" alt="Twisted Duality" class="main-logo">
+
+        <img src="Twisted_Duality_Originals_subtext.png" alt="ORIGINALS" class="subtext-header">
+        <div class="sector">
+            <a href="https://open.spotify.com/artist/3hvsLZ6fWjtB6y6eRcYUat" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
+            <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ アップルと同期：音声 ]">/apple-music</a>
+            <a href="https://soundcloud.com/twysted1" class="nav-link" data-glitch="[ 起源合成 ]">/soundcloud</a>
+            <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
+            <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
+            <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
+        </div>
+
+        <img src="Twisted_Duality_Reimagined_subtext.png" alt="REIMAGINED" class="subtext-header">
+        <div class="sector">
+            <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">/soundcloud</a>
+        </div>
+
+        <div class="sector" style="margin-top: 50px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 30px;">
+            <div style="font-size: 0.8rem; letter-spacing: 2px; margin-bottom: 10px;">NEW TRANSMISSION</div>
+            <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ 最新リリース / ECHOES BEHIND ]</div>
+            <a href="#" class="nav-link" data-glitch="[ 核心：ECHOES ]">/listen_now</a>
+        </div>
+
+        <div class="footer-log">
+            [AU証: 核心] -> 接続 STATUS: ONLINE<br>
+            "TWO FREQUENCIES. ONE VESSEL."
+        </div>
+
+    </div>
+
+    <script>
+        const links = document.querySelectorAll('.nav-link');
+
+        // Mobile Tap-Routing Logic
+        links.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // If it's a dead link (like #), don't route
+                if (this.getAttribute('href') === '#') {
+                    e.preventDefault();
+                    this.classList.add('glitch-active');
+                    setTimeout(() => { this.classList.remove('glitch-active'); }, 400);
+                    return;
+                }
+                
+                e.preventDefault(); 
+                this.classList.add('glitch-active'); 
+                setTimeout(() => {
+                    window.location.href = this.href;
+                }, 400); 
+            });
+        });
+
+        // Random Background Glitch Logic
+        function triggerRandomGlitch() {
+            if (links.length === 0) return;
+            const randomLink = links[Math.floor(Math.random() * links.length)];
+            randomLink.classList.add('glitch-active');
+            
+            setTimeout(() => {
+                randomLink.classList.remove('glitch-active');
+            }, 300);
+
+            const nextGlitchTime = Math.random() * 4000 + 2000;
+            setTimeout(triggerRandomGlitch, nextGlitchTime);
+        }
+
+        setTimeout(triggerRandomGlitch, 2000);
+    </script>
+</body>
+</html>
