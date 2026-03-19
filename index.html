@@ -24,8 +24,13 @@
             min-height: 100vh;
             display: flex; justify-content: center; align-items: flex-start;
             
-            /* BAKE: PADDING FOR HEADROOM */
-            padding-top: 10vh;
+            .main-terminal {
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    padding: 40px 20px;
+    margin-top: 10vh;  /* ADD THIS - keeps headroom below the logo */
+}
             
             overflow-x: hidden;
         }
