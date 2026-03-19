@@ -137,8 +137,14 @@
         #status-footer .online-status { cursor: pointer; text-decoration: underline; transition: color 0.2s ease; }
         #status-footer .online-status:hover { color: var(--glitch-color); }
 
-        [lang="en"] .lang-de-only { display: none; }
-        [lang="de"] .lang-en-only { display: none; }
+        /* Hide all footer blocks by default */
+        .lang-en-only, .lang-de-only, .lang-es-only, .lang-fr-only { display: none; }
+
+        /* Only show the one that matches the current HTML lang attribute */
+        [lang="en"] .lang-en-only { display: block; }
+        [lang="de"] .lang-de-only { display: block; }
+        [lang="es"] .lang-es-only { display: block; }
+        [lang="fr"] .lang-fr-only { display: block; }
         
         /* 4. BACK TO TOP BUTTON */
         #back-to-top {
@@ -352,7 +358,7 @@
     </div>
 
     <div id="status-footer">
-        <div class="lang-de-only">[AU証: <span class="lore-glitch notranslate" data-glitch="CORE">核心</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWO FREQUENCIES. ONE VESSEL."</div>
+        <div class="lang-en-only">[AU証: <span class="lore-glitch notranslate" data-glitch="CORE">核心</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWO FREQUENCIES. ONE VESSEL."</div>
         <div class="lang-de-only">[BE証: <span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">BEREIT</span><br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
         <div class="lang-es-only">[AU証: <span class="lore-glitch notranslate" data-glitch="核心">CENTRO</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN LA RED</span><br>"DOS FRECUENCIAS. UN RECIPIENTE."</div>
         <div class="lang-fr-only">[AU証: <span class="lore-glitch notranslate" data-glitch="核心">CŒUR</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL NAVIRE."</div>
