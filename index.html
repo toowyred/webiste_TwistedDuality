@@ -34,7 +34,7 @@
             left: 0;
             width: 100vw;  
             height: 100vh; 
-            background: #fff url('web-background.png') no-repeat center center;
+            background: #000 url('web-background.png') no-repeat center center;
             background-size: contain;
             z-index: -1;
             transform: translateZ(0); 
@@ -220,6 +220,40 @@
             text-transform: uppercase;
         }
 
+        /* --- FIXED STATUS FOOTER --- */
+        #status-footer {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            z-index: 100;
+            line-height: 1.6;
+            text-transform: uppercase;
+            
+            /* LIQUID GLASS EFFECT */
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            
+            padding: 12px 20px;
+            border-radius: 4px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        #status-footer .online-status {
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s ease;
+        }
+
+        #status-footer .online-status:hover {
+            color: var(--glitch-color);
+        }
+
         [lang="en"] .lang-de-only { display: none; }
         [lang="de"] .lang-en-only { display: none; }
     </style>
@@ -273,8 +307,6 @@
                 <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ from_領コア ]</div>
                 <div style="font-size: 0.8rem; letter-spacing: 1px;">SIGNAL STRENGTH: recalibrating</div>
             </div>
-
-            <div class="footer-log">[AU証: 核心] -> STATUS: ONLINE<br>"TWO FREQUENCIES. ONE VESSEL."</div>
         </div>
 
         <div id="content-de" class="lang-content">
@@ -312,8 +344,6 @@
                 <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ aus_領コア ]</div>
                 <div style="font-size: 0.8rem; letter-spacing: 1px;">SIGNALSTÄRKE: rekalibrierung</div>
             </div>
-
-            <div class="footer-log">[BE証: KERN] -> STATUS: BEREIT<br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
         </div>
 
         <div id="about-sector">
@@ -339,6 +369,12 @@
                 <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ datei_schließen ]</a>
             </div>
         </div>
+    </div>
+
+    <!-- FIXED STATUS FOOTER -->
+    <div id="status-footer">
+        <div class="lang-en-only">[AU証: 核心] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWO FREQUENCIES. ONE VESSEL."</div>
+        <div class="lang-de-only">[BE証: KERN] -> STATUS: <span class="online-status" onclick="checkPassword()">BEREIT</span><br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
     </div>
 
     <script>
@@ -422,6 +458,26 @@
             const about = document.getElementById('about-sector');
             about.style.display = (about.style.display === 'none' || about.style.display === '') ? 'block' : 'none';
             if (about.style.display === 'block') about.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- STATUS PASSWORD EASTER EGG ---
+        function checkPassword() {
+            const password = prompt('[ ENTER TRANSMISSION CODE ]');
+            if (password && password.toUpperCase() === 'DUAL') {
+                const statusElements = document.querySelectorAll('.online-status');
+                statusElements.forEach(el => {
+                    if (langState.current === 'en') {
+                        el.textContent = 'RESONATING';
+                    } else {
+                        el.textContent = 'RESONIEREN';
+                    }
+                    el.style.color = 'var(--glitch-color)';
+                    el.classList.add('glitch-active');
+                    setTimeout(() => el.classList.remove('glitch-active'), 1000);
+                });
+            } else if (password) {
+                alert('[ TRANSMISSION CODE INVALID ]');
+            }
         }
     </script>
 </body>
