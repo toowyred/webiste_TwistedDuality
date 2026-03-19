@@ -48,11 +48,23 @@
         .sector { margin-top: 0; margin-bottom: 30px; }
 
         .lang-switch {
-            position: fixed; top: 25px; right: 30px;
-            font-size: 0.85rem; letter-spacing: 1px; z-index: 100;
-            display: flex; gap: 15px; background: rgba(255, 255, 255, 0.1);
-            padding: 5px 10px; border-radius: 2px;
-            transition: opacity 0.3s ease-out; 
+            position: fixed; 
+            top: 25px; 
+            right: 30px;
+            font-size: 0.85rem; 
+            letter-spacing: 1px; 
+            z-index: 100;
+            display: flex; 
+            gap: 15px; 
+    
+            /* LIQUID GLASS EFFECT */
+            background: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(15px); 
+            -webkit-backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+    
+            padding: 10px 18px; 
+            border-radius: 4px;
         }
 
         .lang-btn { cursor: pointer; opacity: 0.4; transition: opacity 0.3s; color: var(--text-color); }
