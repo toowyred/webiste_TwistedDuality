@@ -45,14 +45,15 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;  
-            height: 100vh; 
+            width: 100vw;
+            height: 100vh;
             background: transparent no-repeat center center;
-            background-size: contain;
+            background-size: cover;
             z-index: -1;
-            transform: translateZ(0); 
+            transform: translateZ(0);
             -webkit-transform: translateZ(0);
         }
+        @media (max-width: 768px) { .grid-bg { background-size: contain; } }
 
         /* --- UI ELEMENTS & LAYOUT --- */
         .main-terminal { width: 100%; max-width: 400px; text-align: center; padding: 5px 20px 40px 20px; }
