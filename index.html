@@ -311,8 +311,9 @@
             function setDualLayerBg(grid, bgFile) {
                 const isHole = holeFiles.some(f => bgFile.includes(f));
                 if (isHole) {
+                    const matrixGif = isMobile ? 'matrix-mobile.gif' : 'matrix-pc.gif';
                     // Dual layer: hole PNG on top, matrix GIF behind
-                    grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/matrix-pc.gif)`;
+                    grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/${matrixGif})`;
                     grid.style.backgroundSize = `contain, 100% auto`;
                     grid.style.backgroundPosition = `center center, center bottom`;
                     grid.style.backgroundRepeat = `no-repeat, no-repeat`;
