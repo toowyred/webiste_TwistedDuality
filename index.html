@@ -272,6 +272,31 @@
             50%       { opacity: 0.3; box-shadow: none; }
         }
 
+        /* --- ABOUT SECTOR SLIDE --- */
+        .about-slider { overflow: hidden; width: 100%; }
+        .about-slide-inner { display: flex; width: 200%; transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .about-slide-inner.show-team { transform: translateX(-50%); }
+        #about-main { width: 50%; flex-shrink: 0; box-sizing: border-box; }
+        #about-team { width: 50%; flex-shrink: 0; box-sizing: border-box; padding-left: 4px; }
+        #about-team .log-header { font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 15px; color: rgba(0,0,0,0.6); font-weight: bold; }
+        .about-crew-line { font-size: 0.82rem; line-height: 2.2; font-family: monospace; }
+        .about-crew-name { color: var(--highlight-color); }
+
+        /* Button rows — flex override for lang-xx-only */
+        .about-btn-row { gap: 10px; justify-content: center; margin-top: 18px; display: none; }
+        [lang="en"] .lang-en-only.about-btn-row,
+        [lang="de"] .lang-de-only.about-btn-row,
+        [lang="es"] .lang-es-only.about-btn-row,
+        [lang="fr"] .lang-fr-only.about-btn-row,
+        [lang="nl"] .lang-nl-only.about-btn-row,
+        [lang="vi"] .lang-vi-only.about-btn-row { display: flex; }
+
+        .team-btn-aligned {
+            display: inline-block !important; height: 30px; line-height: 30px; width: 200px;
+            text-align: center; vertical-align: middle; border: 1px solid rgba(0,0,0,0.1);
+            padding: 0 !important; box-sizing: border-box; margin: 0 !important; cursor: pointer;
+        }
+
     </style>
     <script>
         // Instant dark mode flash prevention — runs before render
@@ -548,27 +573,176 @@
             <div style="height: 20vh; width: 100%;"></div>
         </div>
 
+        <div id="content-nl" class="lang-content">
+            <div style="text-align: center; margin-bottom: 20px;"><a href="javascript:void(0)" class="nav-link" onclick="toggleAbout()" data-glitch="[ GEHEUGEN: 記憶 ]">/over_ons</a></div>
+            <img src="elements/Twisted_Duality_Originals_subtext.png" class="subtext-header originals-logo">
+            <div class="sector">
+                <a href="https://open.spotify.com/artist/6P2T8I0U7p6u4W7r6m8R5f" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
+                <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ 音声同期 ]">/apple-music</a>
+                <a href="https://soundcloud.com/twysted1" class="nav-link" data-glitch="[ 起源合成 ]">og/soundcloud</a>
+                <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
+                <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
+            </div>
+
+            <img src="elements/Twisted_Duality_Reimagined_subtext.png" class="subtext-header reimagined-logo">
+            <div class="sector">
+                <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud</a>
+                <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
+            </div>
+
+            <div class="sector" style="margin-top: 50px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 30px;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">HUIDIGE TRANSMISSIE</div>
+                <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 14px;">[ <span class="notranslate">ECHOES BEHIND</span> ]</div>
+                <a href="https://music.apple.com/us/song/echoes-behind/1882062320" class="nav-link" data-glitch="[ KERN：残響 ]">apple-music/luister_nu</a>
+                <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ KERN：残響 ]">spotify/luister_nu</a>
+                <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
+                    <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/luister_nu</a>
+                </div>
+            </div>
+
+            <div class="sector" style="margin-top: 30px; opacity: 0.6;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">KOMENDE TRANSMISSIE</div>
+                <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ van_<span class="notranslate">領コア</span> ]</div>
+                <div class="signal-status">SIGNAALSTERKTE：herkalibrerend</div>
+            </div>
+
+            <div style="height: 20vh; width: 100%;"></div>
+        </div>
+
+        <div id="content-vi" class="lang-content">
+            <div style="text-align: center; margin-bottom: 20px;"><a href="javascript:void(0)" class="nav-link" onclick="toggleAbout()" data-glitch="[ mô_tả：記憶 ]">/giới_thiệu</a></div>
+            <img src="elements/Twisted_Duality_Originals_subtext.png" class="subtext-header originals-logo">
+            <div class="sector">
+                <a href="https://open.spotify.com/artist/6P2T8I0U7p6u4W7r6m8R5f" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
+                <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ 音声同期 ]">/apple-music</a>
+                <a href="https://soundcloud.com/twysted1" class="nav-link" data-glitch="[ 起源合成 ]">og/soundcloud</a>
+                <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
+                <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
+            </div>
+
+            <img src="elements/Twisted_Duality_Reimagined_subtext.png" class="subtext-header reimagined-logo">
+            <div class="sector">
+                <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud</a>
+                <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
+            </div>
+
+            <div class="sector" style="margin-top: 50px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 30px;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">LÀN&nbsp;SÓNG HIỆN&nbsp;TẠI</div>
+                <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 14px;">[ <span class="notranslate">ECHOES BEHIND</span> ]</div>
+                <a href="https://music.apple.com/us/song/echoes-behind/1882062320" class="nav-link" data-glitch="[ 核心：âm_vang ]">apple-music/nghe_liền</a>
+                <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ 核心：âm_vang ]">spotify/nghe_liền</a>
+                <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
+                    <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/nghe_liền</a>
+                </div>
+            </div>
+
+            <div class="sector" style="margin-top: 30px; opacity: 0.6;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">LÀN&nbsp;SÓNG KẾ TIẾP</div>
+                <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ đếntừ_<span class="notranslate">領コア</span> ]</div>
+                <div class="signal-status">CƯỜNG&nbsp;ĐỘ TÍN&nbsp;HIỆU：đang khuếch&nbsp;đại</div>
+            </div>
+
+            <div style="height: 20vh; width: 100%;"></div>
+        </div>
+
         <div id="about-sector">
-            <div class="lang-en-only">
-                <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
-                <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                    <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
-                    We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes. 
-                    From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel. 
-                    Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
-                </p>
+            <div class="about-slider">
+                <div class="about-slide-inner" id="about-slide-inner">
+
+                    <div id="about-main">
+                        <div class="lang-en-only">
+                            <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes.
+                                From melodic beauty to <span class="sync-group sync-henyi">industrial&nbsp;decay</span>. This is the heartbeat of the vessel.
+                                Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
+                            </p>
+                        </div>
+                        <div class="lang-de-only">
+                            <div class="log-header">//: LOG_START [PERSONEN_ARCHIV]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                Wir <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruieren</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[KLANG]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> durch <span class="sync-group sync-henyi">extreme&nbsp;Manipulation</span>.<br>
+                                Von der Schönheit des Lichts bis zum Zerfall der Schatten—der Herzschlag des Universums.
+                                Hier werden Welten aufgelöst und <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">NEU&nbsp;ERDACHT</span>.
+                            </p>
+                        </div>
+                        <div class="lang-es-only">
+                            <div class="log-header">//: LOG_START [ARCHIVO_PERSONAL]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                Aquí, <span class="sync-group sync-sokuji">/construir</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SONIDO]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOCIÓN]</span> en paisajes envolventes.
+                                De la belleza melódica a la <span class="sync-group sync-henyi">decadencia industrial</span>. Este es el latido de la nave.
+                                Donde los mundos son deshechos y <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINADOS</span>.
+                            </p>
+                        </div>
+                        <div class="lang-fr-only">
+                            <div class="log-header">//: LOG_START [ARCHIVE_PERSONA]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes.
+                                From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel.
+                                Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
+                            </p>
+                        </div>
+                        <div class="lang-nl-only">
+                            <div class="log-header">//: LOG_START [PERSONEN_ARCHIEF]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                Wij <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construeren</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[GELUID]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTIE]</span> tot immersieve landschappen.
+                                Van melodische schoonheid tot <span class="sync-group sync-henyi">industrieel&nbsp;verval</span>. Dit is de hartslag van het vaartuig.
+                                Waar werelden worden ontrafeld en&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">HERGESCHAPEN</span>.
+                            </p>
+                        </div>
+                        <div class="lang-vi-only">
+                            <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes.
+                                From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel.
+                                Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="about-team">
+                        <div class="log-header">//: LOG_START [CREW_ARCHIVE]</div>
+                        <div class="about-crew-line"><span class="about-crew-name">@wyred.on</span> — Architect</div>
+                        <div class="about-crew-line"><span class="about-crew-name">name2</span> — title2</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Per-language button rows -->
+            <div class="lang-en-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ パイロット ]" data-glitch-original="[ パイロット ]" data-original-text="[ the_team ]">[ the_team ]</span>
                 <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ close_file ]</a>
             </div>
-            
-            <div class="lang-de-only">
-                <div class="log-header">//: LOG_START [PERSONEN_ARCHIV]</div>
-                <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                    <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
-                    Wir <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruieren</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[KLANG]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> durch <span class="sync-group sync-henyi">extreme Manipulation</span>.<br> 
-                    Von der Schönheit des Lichts bis zum Zerfall der Schatten—der Herzschlag des Universums. 
-                    Hier werden Welten aufgelöst und <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">NEU ERDACHT</span>.
-                </p>
+            <div class="lang-de-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ 宇宙_pilots ]" data-glitch-original="[ 宇宙_pilots ]" data-original-text="[ die_besatzung ]">[ die_besatzung ]</span>
                 <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ datei_schließen ]</a>
+            </div>
+            <div class="lang-es-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ unidad 組 ]" data-glitch-original="[ unidad 組 ]" data-original-text="[ la_tripulación ]">[ la_tripulación ]</span>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ cerrar_archivo ]</a>
+            </div>
+            <div class="lang-fr-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ unité_組 ]" data-glitch-original="[ unité_組 ]" data-original-text="[ l_equipage ]">[ l_equipage ]</span>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ fermer ]</a>
+            </div>
+            <div class="lang-nl-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ 宇宙_piloten ]" data-glitch-original="[ 宇宙_piloten ]" data-original-text="[ de_bemanning ]">[ de_bemanning ]</span>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ afsluiten ]</a>
+            </div>
+            <div class="lang-vi-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ đội_宇宙士 ]" data-glitch-original="[ đội_宇宙士 ]" data-original-text="[ ê_kíp ]">[ ê_kíp ]</span>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ đóng_hồsơ ]</a>
             </div>
         </div>
     </div>
@@ -578,7 +752,7 @@
         <div class="lang-de-only">[BE証：<span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">BEREIT</span><br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
         <div class="lang-es-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CENTRO</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LA_RED</span><br>"DOS FRECUENCIAS. UN RECIPIENTE."</div>
         <div class="lang-fr-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CŒUR</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL NAVIRE."</div>
-        <div class="lang-nl-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"(SIGNAL MISSING)"</div>
+        <div class="lang-nl-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWEE FREQUENTIES. ÉÉN VAARTUIG."</div>
         <div class="lang-vi-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CỐTLÕI</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">TRỰC_TUYẾN</span><br>"HAI TẦN SỐ. MỘT QUỸ ĐẠO"</div>
     </div>
 
@@ -749,6 +923,24 @@
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RA-SE-N</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
                 <div class="fr-def">Une trajectoire de création et de « decay », une [ spirale ] ascendante où les couches se superposent.</div>
+            `,
+            nl: `
+                <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
+                <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
+                <div class="en-def">Twee opponerende krachten; de [ dualiteit ] verweven door de [ bipolariteit ] van resonantie en impact.</div>
+
+                <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
+                <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
+                <div class="en-def">Een traject van schepping en "verval", onlosmakelijk verstrengeld en eindeloos escalerend in een [ spiraal ].</div>
+            `,
+            vi: `
+                <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
+                <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
+                <div class="en-def">Two opposing forces; the [ duality ] woven by the [ bipolarity ] of resonance and impact.</div>
+
+                <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
+                <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
+                <div class="en-def">A trajectory of creation and "decay" overlapping and continuously ascending in a [ spiral ].</div>
             `
         };
 
@@ -781,6 +973,33 @@
         const aboutCloseSound = new Audio('sounds/closefile-button.mp3');
         aboutCloseSound.volume = 0.5;
 
+        let teamVisible = false;
+        function toggleTeam() {
+            teamVisible = !teamVisible;
+            const inner = document.getElementById('about-slide-inner');
+            if (inner) inner.classList.toggle('show-team', teamVisible);
+            document.querySelectorAll('.team-btn-trigger').forEach(btn => {
+                if (teamVisible) {
+                    btn.textContent = '[ ← ]';
+                    btn.setAttribute('data-glitch', '[ ← ]');
+                } else {
+                    btn.textContent = btn.getAttribute('data-original-text');
+                    btn.setAttribute('data-glitch', btn.getAttribute('data-glitch-original'));
+                }
+            });
+        }
+
+        function resetTeam() {
+            if (!teamVisible) return;
+            teamVisible = false;
+            const inner = document.getElementById('about-slide-inner');
+            if (inner) inner.classList.remove('show-team');
+            document.querySelectorAll('.team-btn-trigger').forEach(btn => {
+                btn.textContent = btn.getAttribute('data-original-text');
+                btn.setAttribute('data-glitch', btn.getAttribute('data-glitch-original'));
+            });
+        }
+
         function toggleAbout() {
             const about = document.getElementById('about-sector');
             const isOpening = (about.style.display === 'none' || about.style.display === '');
@@ -794,6 +1013,7 @@
             } else {
                 aboutCloseSound.currentTime = 0;
                 aboutCloseSound.play();
+                resetTeam();
             }
         }
 
