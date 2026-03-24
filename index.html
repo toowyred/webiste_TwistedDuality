@@ -57,16 +57,21 @@
         /* --- MATRIX VIDEO (behind hole PNGs) --- */
         #matrix-video {
             position: fixed;
-            top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(56.25vh, 100vw);
-            height: 100vh;
+            right: 0;
+            bottom: 0;
+            width: 400px;
+            height: 346px;
             z-index: -2;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.8s ease;
             object-fit: fill;
+        }
+
+        @media (min-width: 1081px) {
+            #matrix-video {
+                right: 420px;
+            }
         }
 
         #matrix-video.active {
