@@ -55,30 +55,6 @@
         }
 
         /* --- MATRIX VIDEO (behind hole PNGs) --- */
-        #matrix-gif {
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: min(100vh, 100vw);
-            height: auto;
-            mix-blend-mode: multiply;
-            z-index: -1;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.8s ease;
-            display: none;
-        }
-
-        @media (min-width: 1081px) {
-            #matrix-gif {
-                display: block;
-            }
-        }
-
-        #matrix-gif.active {
-            opacity: 1;
-        }
 
         /* --- UI ELEMENTS & LAYOUT --- */
         .main-terminal { width: 100%; max-width: 400px; text-align: center; padding: 5px 20px 40px 20px; }
@@ -324,12 +300,29 @@
 
                 const img = new Image();
                 img.onload = () => {
-                    grid.style.backgroundImage = `url(elements/${bgFile})`;
+                    setDualLayerBg(grid, bgFile);
                 };
                 img.onerror = () => {
-                    grid.style.backgroundImage = `url(elements/${fallback})`;
+                    setDualLayerBg(grid, fallback);
                 };
                 img.src = `elements/${bgFile}`;
+            }
+
+            function setDualLayerBg(grid, bgFile) {
+                const isHole = holeFiles.some(f => bgFile.includes(f));
+                if (isHole) {
+                    // Dual layer: hole PNG on top, matrix GIF behind
+                    grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/matrix-pc.gif)`;
+                    grid.style.backgroundSize = `contain, 100% auto`;
+                    grid.style.backgroundPosition = `center center, center bottom`;
+                    grid.style.backgroundRepeat = `no-repeat, no-repeat`;
+                } else {
+                    // Single layer: just the solid BG
+                    grid.style.backgroundImage = `url(elements/${bgFile})`;
+                    grid.style.backgroundSize = `contain`;
+                    grid.style.backgroundPosition = `center center`;
+                    grid.style.backgroundRepeat = `no-repeat`;
+                }
             }
 
             document.addEventListener('DOMContentLoaded', loadBackground);
@@ -339,7 +332,6 @@
 <body>
 
     <div class="grid-bg"></div>
-    <img id="matrix-gif" src="elements/matrix-pc.gif" alt="" aria-hidden="true">
 
     <!-- ON AIR INDICATOR — status driven by Gist fetch below -->
     <div id="onair-indicator">
@@ -670,23 +662,11 @@
             initMatrix();
         });
 
-        /* --- MATRIX VIDEO FOR HOLE PNGs --- */
+        /* --- MATRIX GIF HANDLED IN setDualLayerBg() --- */
         const holeFiles = ['web-background-1-hole.png', 'web-background-2-hole.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
 
         function initMatrix() {
-            const gif = document.getElementById('matrix-gif');
-            const grid = document.querySelector('.grid-bg');
-
-            function checkHole() {
-                const bgStyle = grid.style.backgroundImage || '';
-                const isHole = holeFiles.some(f => bgStyle.includes(f));
-                gif.classList.toggle('active', isHole);
-            }
-
-            // Watch for background changes
-            const observer = new MutationObserver(checkHole);
-            observer.observe(grid, { attributes: true, attributeFilter: ['style'] });
-            checkHole();
+            // Matrix is now integrated into dual-layer backgrounds
         }
 
         function setLanguage(lang) {
