@@ -726,7 +726,7 @@
         };
         function openAdminPanel() {
             const pw = prompt('[ ADMIN ACCESS ]');
-            if (!pw || pw.toUpperCase() !== 'DUAL') { if (pw) alert('[ ACCESS DENIED ]'); return; }
+            if (!pw || pw !== 'owyler') { if (pw) alert('[ ACCESS DENIED ]'); return; }
             const panel = document.getElementById('admin-panel');
             const statsDiv = document.getElementById('admin-stats');
             statsDiv.innerHTML = '<div style="text-align:center;opacity:0.4;font-size:0.65rem;">loading...</div>';
