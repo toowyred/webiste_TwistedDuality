@@ -61,7 +61,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: 0;
+            z-index: -2;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -69,11 +69,6 @@
 
         #matrix-canvas.active {
             opacity: 1;
-        }
-
-        /* Push grid-bg on top when matrix is active */
-        .grid-bg {
-            z-index: 1;
         }
 
         /* --- UI ELEMENTS & LAYOUT --- */
