@@ -53,6 +53,18 @@
             transform: translateZ(0);
             -webkit-transform: translateZ(0);
         }
+        .grid-bg-fill {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: transparent no-repeat center center;
+            background-size: auto 100%;
+            z-index: -2;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+        }
 
         /* --- UI ELEMENTS & LAYOUT --- */
         .main-terminal { width: 100%; max-width: 400px; text-align: center; padding: 5px 20px 40px 20px; }
@@ -280,13 +292,11 @@
 
                 const img = new Image();
                 img.onload = () => {
+                    grid.style.backgroundImage = `url(elements/${bgFile})`;
+                    // Desktop: load fill on separate layer behind main BG
                     if (!isMobile && fillMap[bgFile]) {
-                        grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/${fillMap[bgFile]})`;
-                        grid.style.backgroundSize = 'contain, auto 100%';
-                        grid.style.backgroundPosition = 'center center, center center';
-                        grid.style.backgroundRepeat = 'no-repeat, no-repeat';
-                    } else {
-                        grid.style.backgroundImage = `url(elements/${bgFile})`;
+                        const fillEl = document.querySelector('.grid-bg-fill');
+                        if (fillEl) fillEl.style.backgroundImage = `url(elements/${fillMap[bgFile]})`;
                     }
                 };
                 img.onerror = () => {
@@ -302,6 +312,7 @@
 <body>
 
     <div class="grid-bg"></div>
+    <div class="grid-bg-fill"></div>
 
     <!-- ON AIR INDICATOR — status driven by Gist fetch below -->
     <div id="onair-indicator">
