@@ -288,7 +288,7 @@
     <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</div>
 
     <div class="main-terminal">
-        <video class="main-logo" autoplay loop muted playsinline style="mix-blend-mode: multiply;">
+        <video class="main-logo" id="logo-video" autoplay muted playsinline style="mix-blend-mode: multiply;">
             <source src="elements/Twisted-Duality_videologo.webm" type="video/webm">
             <source src="elements/Twisted-Duality_videologo-web.mp4" type="video/mp4">
         </video>
@@ -768,6 +768,14 @@
             tooltip.style.display = 'block';
             setTimeout(hideTooltip, 3000);
         }, { passive: true });
+
+    // Logo video — 3s pause between loops
+    const logoVideo = document.getElementById('logo-video');
+    if (logoVideo) {
+        logoVideo.addEventListener('ended', () => {
+            setTimeout(() => { logoVideo.currentTime = 0; logoVideo.play(); }, 3000);
+        });
+    }
 
     </script>
 </body>
