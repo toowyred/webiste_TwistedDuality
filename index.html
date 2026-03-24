@@ -55,26 +55,28 @@
         }
 
         /* --- MATRIX VIDEO (behind hole PNGs) --- */
-        #matrix-video {
+        #matrix-gif {
             position: fixed;
-            right: 0;
             bottom: 0;
-            width: 400px;
-            height: 346px;
-            z-index: -2;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(100vh, 100vw);
+            height: auto;
+            mix-blend-mode: multiply;
+            z-index: -1;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.8s ease;
-            object-fit: fill;
+            display: none;
         }
 
         @media (min-width: 1081px) {
-            #matrix-video {
-                right: 420px;
+            #matrix-gif {
+                display: block;
             }
         }
 
-        #matrix-video.active {
+        #matrix-gif.active {
             opacity: 1;
         }
 
@@ -337,10 +339,7 @@
 <body>
 
     <div class="grid-bg"></div>
-    <video id="matrix-video" autoplay loop muted playsinline>
-        <source src="elements/matrixhole.webm" type="video/webm">
-        <source src="elements/matrixhole-web.mp4" type="video/mp4">
-    </video>
+    <img id="matrix-gif" src="elements/matrix-pc.gif" alt="" aria-hidden="true">
 
     <!-- ON AIR INDICATOR — status driven by Gist fetch below -->
     <div id="onair-indicator">
@@ -675,13 +674,13 @@
         const holeFiles = ['web-background-1-hole.png', 'web-background-2-hole.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
 
         function initMatrix() {
-            const video = document.getElementById('matrix-video');
+            const gif = document.getElementById('matrix-gif');
             const grid = document.querySelector('.grid-bg');
 
             function checkHole() {
                 const bgStyle = grid.style.backgroundImage || '';
                 const isHole = holeFiles.some(f => bgStyle.includes(f));
-                video.classList.toggle('active', isHole);
+                gif.classList.toggle('active', isHole);
             }
 
             // Watch for background changes
