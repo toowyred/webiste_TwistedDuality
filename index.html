@@ -282,7 +282,7 @@
                 img.onload = () => {
                     if (!isMobile && fillMap[bgFile]) {
                         grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/${fillMap[bgFile]})`;
-                        grid.style.backgroundSize = 'contain, cover';
+                        grid.style.backgroundSize = 'contain, auto 100%';
                         grid.style.backgroundPosition = 'center center, center center';
                         grid.style.backgroundRepeat = 'no-repeat, no-repeat';
                     } else {
