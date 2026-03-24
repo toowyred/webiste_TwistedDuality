@@ -149,9 +149,9 @@
         #about-sector .log-header { font-size: 0.7rem; letter-spacing: 2px; margin-bottom: 15px; color: rgba(0,0,0,0.6); font-weight: bold; }
 
         .close-btn-aligned {
-            display: inline-block !important; height: 30px; line-height: 30px; width: 200px; 
-            text-align: center; vertical-align: middle; border: 1px solid rgba(0,0,0,0.1);
-            padding: 0 !important; box-sizing: border-box;
+            display: block !important; height: 30px; line-height: 30px; width: 200px;
+            text-align: center; border: 1px solid rgba(0,0,0,0.1);
+            padding: 0 !important; box-sizing: border-box; font-size: 0.82rem;
         }
         .close-btn-aligned::after { top: 0; left: 0; height: 100%; line-height: 30px; width: 100%; }
 
@@ -176,6 +176,8 @@
         #about-sector:has(.sync-henyi:hover) .sync-henyi { color: var(--highlight-color); }
         .rede-toggle::after { content: "re"; animation: redeCycle 1s infinite; }
         @keyframes redeCycle { 0%, 49% { content: "re"; } 50%, 100% { content: "de"; } }
+        .vi-toggle::after { content: "giải"; animation: viCycle 1.2s infinite; }
+        @keyframes viCycle { 0%, 49% { content: "giải"; } 50%, 100% { content: "tái"; } }
 
         #lore-tooltip { position: absolute; display: none; width: 240px; background: var(--tooltip-bg); color: #fff; padding: 15px; border: 1px solid var(--glitch-color); font-family: monospace; font-size: 0.75rem; z-index: 1000; pointer-events: none; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
         #lore-tooltip .word-head { font-size: 1rem; color: var(--glitch-color); margin-bottom: 2px; font-family: 'WDXL Lubrifont JP N', sans-serif; }
@@ -292,9 +294,10 @@
         [lang="vi"] .lang-vi-only.about-btn-row { display: flex; }
 
         .team-btn-aligned {
-            display: inline-block !important; height: 30px; line-height: 30px; width: 200px;
-            text-align: center; vertical-align: middle; border: 1px solid rgba(0,0,0,0.1);
-            padding: 0 !important; box-sizing: border-box; margin: 0 !important; cursor: pointer;
+            display: block !important; height: 30px; line-height: 30px; width: 200px;
+            text-align: center; border: 1px solid rgba(0,0,0,0.1);
+            padding: 0 !important; box-sizing: border-box; margin: 0 !important;
+            cursor: pointer; font-size: 0.82rem;
         }
 
     </style>
@@ -399,6 +402,7 @@
         <span class="lang-btn" id="btn-fr" onclick="setLanguage('fr')">FR日本</span>
         <span class="lang-btn" id="btn-nl" onclick="setLanguage('nl')">NL日本</span>
         <span class="lang-btn" id="btn-vi" onclick="setLanguage('vi')">VI日本</span>
+        <span class="lang-btn" id="btn-pl" onclick="setLanguage('pl')">PL日本</span>
         <span class="lang-btn" style="opacity: 0.6;" onclick="toggleExtraLangs(false)">[ ↑ ]</span>
     </div>
 </div>
@@ -412,7 +416,7 @@
         </video>
 
         <div class="intro-wrap">
-            <span class="intro-track">Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Hier werden Welten <span class="intro-key">Aufgelöst</span> und <span class="intro-key">Neu Erdacht</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Donde los mundos son <span class="intro-key">Deshechos</span> y <span class="intro-key">Reimaginados</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Là où les mondes se <span class="intro-key">Défont</span> et se <span class="intro-key">Réimaginent</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Waar werelden worden <span class="intro-key">Ontmaakt</span> en <span class="intro-key">Opnieuw Verbeeld</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Hier werden Welten <span class="intro-key">Aufgelöst</span> und <span class="intro-key">Neu Erdacht</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Nơi thế giới và ký ức <span class="intro-key">Tan&nbsp;Vỡ</span> và <span class="intro-key">Tái&nbsp;Tạo</span> lại</span>
+            <span class="intro-track">Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Hier werden Welten <span class="intro-key">Aufgelöst</span> und <span class="intro-key">Neu Erdacht</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Donde los mundos son <span class="intro-key">Deshechos</span> y <span class="intro-key">Reimaginados</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Là où les mondes se <span class="intro-key">Défont</span> et se <span class="intro-key">Réimaginent</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Waar werelden worden <span class="intro-key">Ontmaakt</span> en <span class="intro-key">Opnieuw Verbeeld</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Hier werden Welten <span class="intro-key">Aufgelöst</span> und <span class="intro-key">Neu Erdacht</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; 世界が<span class="intro-key">壊され</span>、<span class="intro-key">再び織られる</span>場所 &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are <span class="intro-key">Unmade</span> and <span class="intro-key">Reimagined</span> &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Nơi thế giới và ký ức <span class="intro-key">Tan&nbsp;Vỡ</span> và <span class="intro-key">Tái&nbsp;Tạo</span> lại &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Gdzie światy są <span class="intro-key">Rozplatane</span> i <span class="intro-key">Przekute</span></span>
         </div>
 
         <div id="content-en" class="lang-content active">
@@ -483,7 +487,7 @@
                 <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ KERN：残響 ]">spotify/jetzt_anhören</a>
                 <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
                     <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
-                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/konstrukt</span></div>
                     <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/jetzt_anhören</a>
                 </div>
             </div>
@@ -521,7 +525,7 @@
                 <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ CENTRO：残響 ]">spotify/oye_ahora</a>
                 <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
                     <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
-                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/creación</span></div>
                     <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/oye_ahora</a>
                 </div>
             </div>
@@ -559,7 +563,7 @@
                 <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ CŒUR：残響 ]">spotify/écoutez_ça</a>
                 <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
                     <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
-                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/forge</span></div>
                     <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/écoutez_ça</a>
                 </div>
             </div>
@@ -597,7 +601,7 @@
                 <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ KERN：残響 ]">spotify/luister_nu</a>
                 <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
                     <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
-                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/vorm</span></div>
                     <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/luister_nu</a>
                 </div>
             </div>
@@ -635,7 +639,7 @@
                 <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ 核心：âm_vang ]">spotify/nghe_liền</a>
                 <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
                     <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
-                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/imagined</span></div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Rèn/lại cảmxúc</span></div>
                     <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/nghe_liền</a>
                 </div>
             </div>
@@ -644,6 +648,44 @@
                 <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">LÀN&nbsp;SÓNG KẾ TIẾP</div>
                 <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ đếntừ_<span class="notranslate">領コア</span> ]</div>
                 <div class="signal-status">CƯỜNG&nbsp;ĐỘ TÍN&nbsp;HIỆU：đang khuếch&nbsp;đại</div>
+            </div>
+
+            <div style="height: 20vh; width: 100%;"></div>
+        </div>
+
+        <div id="content-pl" class="lang-content">
+            <div style="text-align: center; margin-bottom: 20px;"><a href="javascript:void(0)" class="nav-link" onclick="toggleAbout()" data-glitch="[ 概要：RDZEŃ ]">/o_nas</a></div>
+            <img src="elements/Twisted_Duality_Originals_subtext.png" class="subtext-header originals-logo">
+            <div class="sector">
+                <a href="https://open.spotify.com/artist/6P2T8I0U7p6u4W7r6m8R5f" class="nav-link" data-glitch="[ 完全変異 ]">/spotify</a>
+                <a href="https://music.apple.com/us/artist/twisted-duality/1882004399" class="nav-link" data-glitch="[ 音声同期 ]">/apple-music</a>
+                <a href="https://soundcloud.com/twysted1" class="nav-link" data-glitch="[ 起源合成 ]">og/soundcloud</a>
+                <a href="https://twysted.bandcamp.com" class="nav-link" data-glitch="[ 深層書庫 ]">/bandcamp</a>
+                <a href="https://instagram.com/t.wysted" class="nav-link" data-glitch="[ 網膜投影 ]">/instagram</a>
+            </div>
+
+            <img src="elements/Twisted_Duality_Reimagined_subtext.png" class="subtext-header reimagined-logo">
+            <div class="sector">
+                <a href="https://soundcloud.com/twysted-re" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud</a>
+                <a href="https://tiktok.com/@twystedone" class="nav-link" data-glitch="[ 断片同期 ]">/tiktok</a>
+            </div>
+
+            <div class="sector" style="margin-top: 50px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 30px;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">TRANSMISJA W TOKU</div>
+                <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 14px;">[ <span class="notranslate">ECHOES BEHIND</span> ]</div>
+                <a href="https://music.apple.com/us/song/echoes-behind/1882062320" class="nav-link" data-glitch="[ 核心：ECHA ]">apple-music/słuchaj_teraz</a>
+                <a href="https://open.spotify.com/track/3TrG4BUOPAcghfq9GAoi5d" class="nav-link" data-glitch="[ 核心：ECHA ]">spotify/słuchaj_teraz</a>
+                <div style="margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(0,0,0,0.08);">
+                    <div style="font-size: 1.125rem; font-weight: bold; margin-bottom: 2px;">[ <span class="notranslate">Golden Hour</span> &mdash; <span class="notranslate">JVKE</span> ]</div>
+                    <div style="margin-bottom: 12px;"><span class="reimagined-tag" data-reimagined="Reimagined from ILLENIUM x NURKO Remix">Re/kuźnia</span></div>
+                    <a href="https://soundcloud.com/twysted-re/goldenhour-tdre" class="nav-link" data-glitch="[ 構造継承 ]">re/soundcloud/słuchaj_teraz</a>
+                </div>
+            </div>
+
+            <div class="sector" style="margin-top: 30px; opacity: 0.6;">
+                <div style="font-size: 0.75rem; letter-spacing: 2px; margin-bottom: 10px;">NADCHODZĄCA TRANSMISJA</div>
+                <div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 10px;">[ z_<span class="notranslate">領コア</span> ]</div>
+                <div class="signal-status">SIŁA SYGNAŁU：rekalibracja</div>
             </div>
 
             <div style="height: 20vh; width: 100%;"></div>
@@ -685,9 +727,9 @@
                             <div class="log-header">//: LOG_START [ARCHIVE_PERSONA]</div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
                                 <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
-                                We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes.
-                                From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel.
-                                Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
+                                Nous <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construisons</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SON]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[ÉMOTION]</span> en paysages immersifs.
+                                De la beauté mélodique au <span class="sync-group sync-henyi">délitement&nbsp;industriel</span>. Voici la&nbsp;pulsation du&nbsp;vaisseau.
+                                Où les mondes sont détissés et&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REFORGÉS</span>.
                             </p>
                         </div>
                         <div class="lang-nl-only">
@@ -700,13 +742,22 @@
                             </p>
                         </div>
                         <div class="lang-vi-only">
-                            <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
+                            <div class="log-header">//: LOG_START [LƯU_TRỮ_CÁ_NHÂN]</div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
                                 <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
-                                We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[SOUND]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOTION]</span> into immersive landscapes.
-                                From melodic beauty to <span class="sync-group sync-henyi">industrial decay</span>. This is the heartbeat of the vessel.
-                                Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
+                                Chúng&nbsp;tôi <span class="sync-group sync-sokuji"><span class="vi-toggle"></span>/cấu&nbsp;trúc</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[ÂM&nbsp;THANH]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[CẢM&nbsp;XÚC]</span> thành những cảm&nbsp;xúc đắm&nbsp;chìm.
+                                Từ vẻ đẹp của giai&nbsp;điệu đến cực&nbsp;đỉnh <span class="sync-group sync-henyi">tan&nbsp;rã tâm&nbsp;hồn</span>. Nơi đây tạo ra nhịp&nbsp;đập của bản&nbsp;thể.
+                                Nơi thế&nbsp;giới và ký&nbsp;ức xưa được tháo gỡ và <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">TÁI&nbsp;TẠO&nbsp;LẠI</span> cảm&nbsp;xúc mới.
                             </p>
+                        <div class="lang-pl-only">
+                            <div class="log-header">//: LOG_START [ARCHIWUM_OSÓB]</div>
+                            <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                My <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruujemy</span><br> <span class="lore-glitch" data-glitch="[SOUND]">[DŹWIĘK]</span> + <span class="lore-glitch glitch-rare" data-glitch="[UWU(:ON]">[EMOCJĘ]</span> w immersyjne krajobrazy.
+                                Od melodyjnego piękna po <span class="sync-group sync-henyi">industrialny rozpad</span>. Oto tętno jednostki.
+                                Gdzie światy są rozplatane i&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">PRZEKUTE</span>.
+                            </p>
+                        </div>
                         </div>
                     </div>
 
@@ -722,27 +773,31 @@
             <!-- Per-language button rows -->
             <div class="lang-en-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ パイロット ]" data-glitch-original="[ パイロット ]" data-original-text="[ the_team ]">[ the_team ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ close_file ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ close_file ]</a>
             </div>
             <div class="lang-de-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ 宇宙_pilots ]" data-glitch-original="[ 宇宙_pilots ]" data-original-text="[ die_besatzung ]">[ die_besatzung ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ datei_schließen ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ datei_schließen ]</a>
             </div>
             <div class="lang-es-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ unidad 組 ]" data-glitch-original="[ unidad 組 ]" data-original-text="[ la_tripulación ]">[ la_tripulación ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ cerrar_archivo ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ cerrar_archivo ]</a>
             </div>
             <div class="lang-fr-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ unité_組 ]" data-glitch-original="[ unité_組 ]" data-original-text="[ l_equipage ]">[ l_equipage ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ fermer ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ fermer ]</a>
             </div>
             <div class="lang-nl-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ 宇宙_piloten ]" data-glitch-original="[ 宇宙_piloten ]" data-original-text="[ de_bemanning ]">[ de_bemanning ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ afsluiten ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ afsluiten ]</a>
             </div>
             <div class="lang-vi-only about-btn-row">
                 <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ đội_宇宙士 ]" data-glitch-original="[ đội_宇宙士 ]" data-original-text="[ ê_kíp ]">[ ê_kíp ]</span>
-                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]" style="font-size: 0.7rem;">[ đóng_hồsơ ]</a>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ đóng_hồsơ ]</a>
+            </div>
+            <div class="lang-pl-only about-btn-row">
+                <span class="nav-link stationary-glitch team-btn-aligned team-btn-trigger" onclick="toggleTeam()" data-glitch="[ 乗組員：ZAŁOGA ]" data-glitch-original="[ 乗組員：ZAŁOGA ]" data-original-text="[ zespół ]">[ zespół ]</span>
+                <a href="javascript:void(0)" onclick="toggleAbout()" class="nav-link stationary-glitch close-btn-aligned" data-glitch="[ 閉じる ]">[ zamknij_plik ]</a>
             </div>
         </div>
     </div>
@@ -754,6 +809,7 @@
         <div class="lang-fr-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CŒUR</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL NAVIRE."</div>
         <div class="lang-nl-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWEE FREQUENTIES. ÉÉN VAARTUIG."</div>
         <div class="lang-vi-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CỐTLÕI</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">TRỰC_TUYẾN</span><br>"HAI TẦN SỐ. MỘT QUỸ ĐẠO"</div>
+        <div class="lang-pl-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">RDZEŃ</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">POŁĄCZONY</span><br>"DWIE CZĘSTOTLIWOŚCI. JEDNA JEDNOSTKA."</div>
     </div>
 
     <div id="credit-footer"><span onclick="openAdminPanel()" style="cursor:default;user-select:none;">&copy;</span> 2024&ndash;2025 Twisted Duality&trade; &amp; Reimagined&trade; &mdash; contrusted by <a href="https://instagram.com/wyred.on" target="_blank">@wyred.on</a></div>
@@ -790,7 +846,8 @@
             es: { light: 'Claro',   dark: 'Oscuro',  glitchLight: 'Lo atenúo?',   glitchDark: 'ON la luz?' },
             fr: { light: 'Clair',   dark: 'Sombre',  glitchLight: 'Débrancher?',  glitchDark: 'Vois pas?' },
             vi: { light: 'Sáng',    dark: 'Tối',     glitchLight: 'Tắt đèn?',    glitchDark: 'Tối quá?' },
-            nl: { light: 'Licht',   dark: 'Donker',  glitchLight: 'Licht uit?',   glitchDark: 'Licht aan?' }
+            nl: { light: 'Licht',   dark: 'Donker',  glitchLight: 'Licht uit?',   glitchDark: 'Licht aan?' },
+            pl: { light: 'Jasny',   dark: 'Ciemny',  glitchLight: 'Wyłączyć?',    glitchDark: 'Zapalić?' }
         };
 
         function toggleDarkMode() {
@@ -891,56 +948,65 @@
             en: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
                 <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="en-def">Two opposing forces; the [ duality ] woven by the [ bipolarity ] of resonance and impact.</div>
+                <div class="en-def">Two opposing forces; the [&nbsp;duality&nbsp;] woven by the [&nbsp;bipolarity&nbsp;] of resonance and impact.</div>
                 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="en-def">A trajectory of creation and "decay" overlapping and continuously ascending in a [ spiral ].</div>
+                <div class="en-def">A trajectory of creation and "decay" overlapping and continuously ascending in a [&nbsp;spiral&nbsp;].</div>
             `,
             de: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SSO-KJOH-KU</div>
                 <div class="jp-def">>相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="en-def">Zwei gegensätzliche Kräfte; die durch die [ Bipolarität ] von Resonanz und Einschlag gewobene [ Dualität ].</div>
+                <div class="en-def">Zwei gegensätzliche Kräfte; die durch die [&nbsp;Bipolarität&nbsp;] von Resonanz und Einschlag gewobene [&nbsp;Dualität&nbsp;].</div>
                 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 LA-SSEN</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="en-def">Eine schöpferische Flugbahn der „Decay“, die sich überlagert und als [ Spirale ] kontinuierlich aufsteigt.</div>
+                <div class="en-def">Eine schöpferische Flugbahn der „Decay“, die sich überlagert und als [&nbsp;Spirale&nbsp;] kontinuierlich aufsteigt.</div>
             `,
             es: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
                 <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="es-def">Dos fuerzas opuestas; la [ dualidad ] tejida por la [ bipolaridad ] entre la resonancia y el impacto.</div>
+                <div class="es-def">Dos fuerzas opuestas; la [&nbsp;dualidad&nbsp;] tejida por la [&nbsp;bipolaridad&nbsp;] entre la resonancia y el impacto.</div>
 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="es-def">Una trayectoria de creación y "decay", una [ espiral ] ascendente donde las capas se sobreponen.</div>
+                <div class="es-def">Una trayectoria de creación y "decay", una [&nbsp;espiral&nbsp;] ascendente donde las capas se sobreponen.</div>
             `,
             fr: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌ-KYO-KU</div>
                 <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="fr-def">Deux forces opposées ; la [ dualité ] tissée par la [ bipolarité ] entre résonance et impact.</div>
+                <div class="fr-def">Deux forces diamétrales&nbsp;; la [&nbsp;dualité&nbsp;] tissée par la [&nbsp;bipolarité&nbsp;] de la résonance et de&nbsp;l'impact.</div>
 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RA-SE-N</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="fr-def">Une trajectoire de création et de « decay », une [ spirale ] ascendante où les couches se superposent.</div>
+                <div class="fr-def">Une trajectoire de genèse et de&nbsp;délitement, inextricablement&nbsp;enchevêtrée et en perpétuelle&nbsp;ascension dans une&nbsp;[&nbsp;spirale&nbsp;].</div>
             `,
             nl: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
                 <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="en-def">Twee opponerende krachten; de [ dualiteit ] verweven door de [ bipolariteit ] van resonantie en impact.</div>
+                <div class="en-def">Twee opponerende krachten; de [&nbsp;dualiteit&nbsp;] verweven door de [&nbsp;bipolariteit&nbsp;] van resonantie en impact.</div>
 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="en-def">Een traject van schepping en "verval", onlosmakelijk verstrengeld en eindeloos escalerend in een [ spiraal ].</div>
+                <div class="en-def">Een traject van schepping en "verval", onlosmakelijk verstrengeld en eindeloos escalerend in een [&nbsp;spiraal&nbsp;].</div>
+            `,
+            pl: `
+                <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
+                <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
+                <div class="en-def">Dwie przeciwstawne siły;&nbsp;[&nbsp;dualność&nbsp;] spleciona przez [&nbsp;bipolarność&nbsp;] rezonansu i uderzenia.</div>
+
+                <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
+                <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
+                <div class="en-def">Trajektoria genezy i rozpadu, nierozerwalnie splątana i nieustannie eskalująca w&nbsp;[&nbsp;spiralę&nbsp;].</div>
             `,
             vi: `
                 <div class="word-head"><span class="notranslate">双極</span></div><div class="reading">【 そうきょく 】 SŌKYOKU</div>
                 <div class="jp-def">相反する二つの力。残響と衝撃、その「双極」が織りなす「二元性」。</div>
-                <div class="en-def">Two opposing forces; the [ duality ] woven by the [ bipolarity ] of resonance and impact.</div>
+                <div class="en-def">Two opposing forces; the [&nbsp;duality&nbsp;] woven by the [&nbsp;bipolarity&nbsp;] of resonance and impact.</div>
 
                 <div class="word-head"><span class="notranslate">螺旋</span></div><div class="reading">【 らせん 】 RASEN</div>
                 <div class="jp-def">重なり合い、変異を繰り返しながら、高まり続ける「螺旋」の軌跡。</div>
-                <div class="en-def">A trajectory of creation and "decay" overlapping and continuously ascending in a [ spiral ].</div>
+                <div class="en-def">A trajectory of creation and "decay" overlapping and continuously ascending in a [&nbsp;spiral&nbsp;].</div>
             `
         };
 
