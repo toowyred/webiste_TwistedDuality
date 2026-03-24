@@ -281,6 +281,9 @@
             const fallbacks = isMobile ? mobileFallbacks : desktopFallbacks;
 
             function loadBackground() {
+                // Skip if dark mode is active — applyDarkMode handles its own BG
+                if (localStorage.getItem('Light Out') === 'true') return;
+
                 const bgFile = bgs[Math.floor(Math.random() * bgs.length)];
                 const fallback = fallbacks[bgFile];
                 const grid = document.querySelector('.grid-bg');
