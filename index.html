@@ -54,8 +54,8 @@
             -webkit-transform: translateZ(0);
         }
 
-        /* --- MATRIX CANVAS (behind hole PNGs) --- */
-        #matrix-canvas {
+        /* --- MATRIX VIDEO (behind hole PNGs) --- */
+        #matrix-video {
             position: fixed;
             top: 0;
             left: 0;
@@ -64,10 +64,11 @@
             z-index: -2;
             pointer-events: none;
             opacity: 0;
-            transition: opacity 0.3s ease;
+            transition: opacity 0.8s ease;
+            object-fit: cover;
         }
 
-        #matrix-canvas.active {
+        #matrix-video.active {
             opacity: 1;
         }
 
@@ -330,7 +331,10 @@
 <body>
 
     <div class="grid-bg"></div>
-    <canvas id="matrix-canvas"></canvas>
+    <video id="matrix-video" autoplay loop muted playsinline>
+        <source src="elements/matrixhole.webm" type="video/webm">
+        <source src="elements/matrixhole-web.mp4" type="video/mp4">
+    </video>
 
     <!-- ON AIR INDICATOR — status driven by Gist fetch below -->
     <div id="onair-indicator">
@@ -661,62 +665,23 @@
             initMatrix();
         });
 
-        /* --- MATRIX EFFECT FOR HOLE PNGs --- */
+        /* --- MATRIX VIDEO FOR HOLE PNGs --- */
         const holeFiles = ['web-background-1-hole.png', 'web-background-2-hole.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
 
         function initMatrix() {
-            const canvas = document.getElementById('matrix-canvas');
-            const ctx = canvas.getContext('2d');
+            const video = document.getElementById('matrix-video');
             const grid = document.querySelector('.grid-bg');
 
-            // Set canvas size
-            function resizeCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-
-            const fontSize = 12;
-            const cols = Math.floor(canvas.width / fontSize);
-            const rows = Math.floor(canvas.height / fontSize);
-            const drops = Array(cols).fill(0).map(() => Math.random() * rows);
-
-            function drawMatrix() {
-                // Check if current BG is a hole file
+            function checkHole() {
                 const bgStyle = grid.style.backgroundImage || '';
                 const isHole = holeFiles.some(f => bgStyle.includes(f));
-                const canvas = document.getElementById('matrix-canvas');
-                const isDarkMode = localStorage.getItem('Light Out') === 'true';
-                canvas.classList.toggle('active', isHole);
-
-                // Clear canvas without fade for lightmode (brighter effect)
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                ctx.font = `${fontSize}px monospace`;
-                ctx.fillStyle = '#de7029';
-
-                for (let i = 0; i < cols; i++) {
-                    const char = Math.random() > 0.5 ? '0' : '1';
-
-                    // Lightmode: mostly orange, occasional black; Darkmode: mostly black, occasional orange
-                    if (isDarkMode) {
-                        ctx.fillStyle = Math.random() > 0.85 ? '#de7029' : '#000000';
-                    } else {
-                        ctx.fillStyle = Math.random() > 0.3 ? '#de7029' : '#333333';
-                    }
-
-                    ctx.fillText(char, i * fontSize, drops[i] * fontSize);
-
-                    drops[i]++;
-                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.92) {
-                        drops[i] = 0;
-                    }
-                }
-
-                if (isHole) requestAnimationFrame(drawMatrix);
+                video.classList.toggle('active', isHole);
             }
-            drawMatrix();
+
+            // Watch for background changes
+            const observer = new MutationObserver(checkHole);
+            observer.observe(grid, { attributes: true, attributeFilter: ['style'] });
+            checkHole();
         }
 
         function setLanguage(lang) {
