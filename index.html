@@ -264,7 +264,6 @@
             document.documentElement.style.setProperty('--text-color', '#ffffff');
             document.documentElement.style.setProperty('--glitch-color', '#b3a272');
             document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
-            document.documentElement.style.backgroundColor = '#0e0e0e';
         }
 
         // Background rotation (mobile 9:16, desktop 1:1)
@@ -609,7 +608,6 @@
                 document.documentElement.style.setProperty('--text-color', '#ffffff');
                 document.documentElement.style.setProperty('--glitch-color', '#b3a272');
                 document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
-                document.body.style.backgroundColor = '#0e0e0e';
                 if (grid) {
                     const darkBg = isMobile ? 'web-background-darkmode.png' : 'pc-web-background-darkmode.png';
                     grid.style.backgroundImage = `url(elements/${darkBg})`;
@@ -623,7 +621,6 @@
                 document.documentElement.style.setProperty('--text-color', '#000000');
                 document.documentElement.style.setProperty('--glitch-color', '#de7029');
                 document.documentElement.style.setProperty('--bg-color', '#ffffff');
-                document.body.style.backgroundColor = '#ffffff';
                 const bgs = isMobile
                     ? ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png']
                     : ['pc-web-background-main-lightmode.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
