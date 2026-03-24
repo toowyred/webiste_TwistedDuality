@@ -254,27 +254,43 @@
 
     </style>
     <script>
-        // Background rotation (lightmode only)
+        // Background rotation (lightmode only, mobile vs desktop)
         (function() {
-            const lightBgs = ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png'];
-            const solidFallbacks = {
+            const isMobile = window.innerWidth <= 768;
+
+            const bgs = ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png'];
+            const fallbacks = {
                 'web-background-main-lightmode.png': 'web-background.png',
                 'web-background-1-hole.png': 'web-background-1-solid.png',
                 'web-background-2-hole.png': 'web-background-2-solid.png'
             };
 
             function loadBackground() {
-                const bgFile = lightBgs[Math.floor(Math.random() * lightBgs.length)];
-                const fallback = solidFallbacks[bgFile];
+                const bgFile = bgs[Math.floor(Math.random() * bgs.length)];
+                const fallback = fallbacks[bgFile];
+                const grid = document.querySelector('.grid-bg');
+                if (!grid) return;
+
+                // Desktop: pair the fill behind the main BG
+                const fillMap = {
+                    'web-background-main-lightmode.png': 'web-background-main-lightmode-fill.png',
+                    'web-background-1-hole.png': 'web-background-1-hole-fill.png',
+                    'web-background-2-hole.png': 'web-background-2-hole-fill.png'
+                };
 
                 const img = new Image();
                 img.onload = () => {
-                    const grid = document.querySelector('.grid-bg');
-                    if (grid) grid.style.backgroundImage = `url(elements/${bgFile})`;
+                    if (!isMobile && fillMap[bgFile]) {
+                        grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/${fillMap[bgFile]})`;
+                        grid.style.backgroundSize = 'contain, cover';
+                        grid.style.backgroundPosition = 'center center, center center';
+                        grid.style.backgroundRepeat = 'no-repeat, no-repeat';
+                    } else {
+                        grid.style.backgroundImage = `url(elements/${bgFile})`;
+                    }
                 };
                 img.onerror = () => {
-                    const grid = document.querySelector('.grid-bg');
-                    if (grid) grid.style.backgroundImage = `url(elements/${fallback})`;
+                    grid.style.backgroundImage = `url(elements/${fallback})`;
                 };
                 img.src = `elements/${bgFile}`;
             }
