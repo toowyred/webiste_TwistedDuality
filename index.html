@@ -61,7 +61,7 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            z-index: -1;
+            z-index: 0;
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.3s ease;
@@ -69,6 +69,11 @@
 
         #matrix-canvas.active {
             opacity: 1;
+        }
+
+        /* Push grid-bg on top when matrix is active */
+        .grid-bg {
+            z-index: 1;
         }
 
         /* --- UI ELEMENTS & LAYOUT --- */
@@ -687,28 +692,34 @@
                 const bgStyle = grid.style.backgroundImage || '';
                 const isHole = holeFiles.some(f => bgStyle.includes(f));
                 const canvas = document.getElementById('matrix-canvas');
+                const isDarkMode = localStorage.getItem('Light Out') === 'true';
                 canvas.classList.toggle('active', isHole);
 
-                if (!isHole) return;
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.02)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                // Clear canvas without fade for lightmode (brighter effect)
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 ctx.font = `${fontSize}px monospace`;
+                ctx.fillStyle = '#de7029';
 
                 for (let i = 0; i < cols; i++) {
                     const char = Math.random() > 0.5 ? '0' : '1';
-                    const color = Math.random() > 0.7 ? '#de7029' : '#000000';
-                    ctx.fillStyle = color;
+
+                    // Lightmode: mostly orange, occasional black; Darkmode: mostly black, occasional orange
+                    if (isDarkMode) {
+                        ctx.fillStyle = Math.random() > 0.85 ? '#de7029' : '#000000';
+                    } else {
+                        ctx.fillStyle = Math.random() > 0.3 ? '#de7029' : '#333333';
+                    }
+
                     ctx.fillText(char, i * fontSize, drops[i] * fontSize);
 
                     drops[i]++;
-                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.95) {
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.92) {
                         drops[i] = 0;
                     }
                 }
 
-                requestAnimationFrame(drawMatrix);
+                if (isHole) requestAnimationFrame(drawMatrix);
             }
             drawMatrix();
         }
