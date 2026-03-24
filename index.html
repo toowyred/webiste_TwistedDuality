@@ -47,7 +47,7 @@
             left: 0;
             width: 100vw;  
             height: 100vh; 
-            background: #fff no-repeat center center;
+            background: var(--bg-color, #fff) no-repeat center center;
             background-size: contain;
             z-index: -1;
             transform: translateZ(0); 
@@ -259,6 +259,14 @@
 
     </style>
     <script>
+        // Instant dark mode flash prevention — runs before render
+        if (localStorage.getItem('Light Out') === 'true') {
+            document.documentElement.style.setProperty('--text-color', '#ffffff');
+            document.documentElement.style.setProperty('--glitch-color', '#b3a272');
+            document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
+            document.documentElement.style.backgroundColor = '#0e0e0e';
+        }
+
         // Background rotation (mobile 9:16, desktop 1:1)
         (function() {
             const isMobile = window.innerWidth <= 768;
@@ -600,7 +608,8 @@
             if (dark) {
                 document.documentElement.style.setProperty('--text-color', '#ffffff');
                 document.documentElement.style.setProperty('--glitch-color', '#b3a272');
-                document.body.style.backgroundColor = '#0a0a0a';
+                document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
+                document.body.style.backgroundColor = '#0e0e0e';
                 if (grid) {
                     const darkBg = isMobile ? 'web-background-darkmode.png' : 'pc-web-background-darkmode.png';
                     grid.style.backgroundImage = `url(elements/${darkBg})`;
@@ -613,6 +622,7 @@
             } else {
                 document.documentElement.style.setProperty('--text-color', '#000000');
                 document.documentElement.style.setProperty('--glitch-color', '#de7029');
+                document.documentElement.style.setProperty('--bg-color', '#ffffff');
                 document.body.style.backgroundColor = '#ffffff';
                 const bgs = isMobile
                     ? ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png']
