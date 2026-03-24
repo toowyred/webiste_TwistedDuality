@@ -5,8 +5,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate" />
-    
-    <title><span class="notranslate">Twisted Duality</span> | Archive</title>
+    <meta name="description" content="Official archive of Twisted Duality™ & Twisted Duality Reimagined™ — Where worlds are Unmade and Reimagined." />
+    <meta property="og:title" content="Twisted Duality™ | Official Archive" />
+    <meta property="og:description" content="Official archive of Twisted Duality™ & Twisted Duality Reimagined™ — Where worlds are Unmade and Reimagined." />
+
+    <title>Twisted Duality™ | Archive</title>
     <link href="https://fonts.googleapis.com/css2?family=WDXL+Lubrifont+JP+N&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Unica+One&display=swap" rel="stylesheet">
     <style>
@@ -49,6 +52,26 @@
         .main-logo { width: 100%; max-width: 280px; margin: 0 auto 10px auto; display: block; }
         .subtext-header { width: 100%; max-width: 200px; margin: 15px auto 5px auto; display: block; }
         .sector { margin-top: 0; margin-bottom: 30px; }
+
+        /* --- TICKER / RUNNING LINE --- */
+        .ticker-wrap {
+            width: 100%;
+            overflow: hidden;
+            margin: 6px 0 14px 0;
+        }
+        .ticker-track {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker-scroll 18s linear infinite;
+            font-size: 0.62rem;
+            letter-spacing: 2.5px;
+            opacity: 0.55;
+            text-transform: uppercase;
+        }
+        @keyframes ticker-scroll {
+            0%   { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
 
         /* 2. VERTICAL GLASS LANG SWITCH */
         .lang-switch {
@@ -137,6 +160,9 @@
         #status-footer { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; letter-spacing: 1px; z-index: 100; line-height: 1.6; text-transform: uppercase; background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.1); padding: 12px 20px; border-radius: 4px; text-align: center; white-space: nowrap; }
         #status-footer .online-status { cursor: pointer; text-decoration: underline; transition: color 0.2s ease; }
         #status-footer .online-status:hover { color: var(--glitch-color); }
+        .footer-origin { margin-top: 8px; padding-top: 7px; border-top: 1px solid rgba(0,0,0,0.12); font-size: 0.55rem; letter-spacing: 1.5px; opacity: 0.45; text-transform: none; }
+        .footer-origin-link { color: inherit; text-decoration: none; border-bottom: 1px solid currentColor; transition: opacity 0.2s; }
+        .footer-origin-link:hover { opacity: 1; }
 
         /* 1. Hide all footer blocks by default */
         .lang-en-only, .lang-de-only, .lang-es-only, 
@@ -197,12 +223,12 @@
     <div class="lang-switch" id="lang-container">
     <span class="lang-btn active" id="btn-en" onclick="setLanguage('en')">EN日本</span>
     <span class="lang-btn" id="btn-de" onclick="setLanguage('de')">DE日本</span>
-    <span class="lang-btn" id="btn-es" onclick="setLanguage('es')">ES日本</span>
-    <span class="lang-btn" id="btn-fr" onclick="setLanguage('fr')">FR日本</span>
-    
+
     <span id="btn-expand" class="lang-btn" style="opacity: 0.6;" onclick="toggleExtraLangs(true)">[ ↓ ]</span>
-    
+
     <div id="extra-langs-drawer" style="display: none; flex-direction: column; gap: 12px; margin-top: 12px;">
+        <span class="lang-btn" id="btn-es" onclick="setLanguage('es')">ES日本</span>
+        <span class="lang-btn" id="btn-fr" onclick="setLanguage('fr')">FR日本</span>
         <span class="lang-btn" id="btn-nl" onclick="setLanguage('nl')">NL日本</span>
         <span class="lang-btn" id="btn-vi" onclick="setLanguage('vi')">VI日本</span>
         <span class="lang-btn" style="opacity: 0.6;" onclick="toggleExtraLangs(false)">[ ↑ ]</span>
@@ -213,6 +239,10 @@
 
     <div class="main-terminal">
         <img src="Twisted_Duality_nosubtext.png" alt="Twisted Duality" class="main-logo">
+
+        <div class="ticker-wrap">
+            <span class="ticker-track">Where worlds are Unmade and Reimagined &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are Unmade and Reimagined &nbsp;&nbsp;&mdash;&nbsp;&nbsp; Where worlds are Unmade and Reimagined</span>
+        </div>
 
         <div id="content-en" class="lang-content active">
             <div style="text-align: center; margin-bottom: 20px;">
@@ -384,6 +414,7 @@
         <div class="lang-fr-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">CŒUR</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL NAVIRE."</div>
         <div class="lang-nl-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心">KERN</span>] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"(SIGNAL MISSING)"</div>
         <div class="lang-vi-only">[AU証：<span class="lore-glitch notranslate" data-glitch="核心"><span class="vi-font">CỐTLÕI</span></span>] -> STATUS: <span class="online-status" onclick="checkPassword()"><span class="vi-font">TRỰC_TUYẾN</span></span><br><span class="vi-font">"HAI TẦN SỐ. MỘT QUỸ ĐẠO"</span></div>
+        <div class="footer-origin">&copy; 2024&ndash;2025 Twisted Duality&trade; &amp; Reimagined&trade; &mdash; conceived &amp; built by <a href="https://instagram.com/wyred.on" target="_blank" class="footer-origin-link">@wyred.on</a></div>
     </div>
 
 
