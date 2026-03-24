@@ -117,6 +117,11 @@
         .lang-btn { cursor: pointer; opacity: 0.4; transition: opacity 0.3s; color: var(--text-color); }
         .lang-btn.active { opacity: 1; font-weight: bold; border-bottom: 1px solid var(--text-color); }
 
+        .mode-toggle { cursor: pointer; opacity: 0.7; transition: opacity 0.3s; color: var(--text-color); font-size: 0.65rem; letter-spacing: 1px; position: relative; display: inline-block; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.15); }
+        .mode-toggle:hover { opacity: 1; }
+        .mode-toggle:hover .mode-label { opacity: 0; }
+        .mode-toggle:hover::after { content: attr(data-glitch); position: absolute; left: 0; width: 100%; text-align: right; color: var(--glitch-color); animation: link-glitch 0.3s steps(2) infinite; font-family: 'WDXL Lubrifont JP N', sans-serif; }
+
         .lang-content { display: none; }
         .lang-content.active { display: block; }
 
@@ -312,6 +317,7 @@
     </div>
 
     <div class="lang-switch" id="lang-container">
+    <span class="mode-toggle" id="mode-toggle" data-glitch="Unplug?" onclick="toggleDarkMode()"><span class="mode-label">Light</span></span>
     <span class="lang-btn active" id="btn-en" onclick="setLanguage('en')">EN日本</span>
     <span class="lang-btn" id="btn-de" onclick="setLanguage('de')">DE日本</span>
 
@@ -556,18 +562,74 @@
         track('visits');
 
         const langState = { current: 'en' };
-        
+
+        // Dark mode toggle — per-language labels
+        const modeLabels = {
+            en: { light: 'Light',   dark: 'Dark',    glitchLight: 'Unplug?',      glitchDark: 'Too dark?' },
+            de: { light: 'Heller',  dark: 'Dunkel',  glitchLight: 'Ziehen?',      glitchDark: 'Licht ON?' },
+            es: { light: 'Claro',   dark: 'Oscuro',  glitchLight: 'Lo atenúo?',   glitchDark: 'ON la luz?' },
+            fr: { light: 'Clair',   dark: 'Sombre',  glitchLight: 'Débrancher?',  glitchDark: 'Vois pas?' },
+            vi: { light: 'Sáng',    dark: 'Tối',     glitchLight: 'Tắt đèn?',    glitchDark: 'Tối quá?' },
+            nl: { light: 'Licht',   dark: 'Donker',  glitchLight: 'Licht uit?',   glitchDark: 'Licht aan?' }
+        };
+
+        function toggleDarkMode() {
+            const isDark = localStorage.getItem('Light Out') === 'true';
+            localStorage.setItem('Light Out', isDark ? 'false' : 'true');
+            applyDarkMode(!isDark);
+        }
+
+        function updateModeLabel() {
+            const toggle = document.getElementById('mode-toggle');
+            const label = toggle.querySelector('.mode-label');
+            const lang = langState.current;
+            const isDark = localStorage.getItem('Light Out') === 'true';
+            const labels = modeLabels[lang] || modeLabels.en;
+            label.textContent = isDark ? labels.dark : labels.light;
+            toggle.setAttribute('data-glitch', isDark ? labels.glitchDark : labels.glitchLight);
+        }
+
+        function applyDarkMode(dark) {
+            const grid = document.querySelector('.grid-bg');
+            const isMobile = window.innerWidth <= 768;
+
+            if (dark) {
+                document.documentElement.style.setProperty('--text-color', '#ffffff');
+                document.documentElement.style.setProperty('--glitch-color', '#b3a272');
+                document.body.style.backgroundColor = '#0a0a0a';
+                if (grid) {
+                    const darkBg = isMobile ? 'web-background-darkmode.png' : 'pc-web-background-darkmode.png';
+                    grid.style.backgroundImage = `url(elements/${darkBg})`;
+                }
+            } else {
+                document.documentElement.style.setProperty('--text-color', '#000000');
+                document.documentElement.style.setProperty('--glitch-color', '#de7029');
+                document.body.style.backgroundColor = '#ffffff';
+                const bgs = isMobile
+                    ? ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png']
+                    : ['pc-web-background-main-lightmode.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
+                if (grid) grid.style.backgroundImage = `url(elements/${bgs[Math.floor(Math.random() * bgs.length)]})`;
+            }
+            updateModeLabel();
+        }
+
+        // Apply saved preference on load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('Light Out') === 'true') applyDarkMode(true);
+        });
+
         function setLanguage(lang) {
             langState.current = lang;
             document.getElementById('main-html').setAttribute('lang', lang);
             document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
-            
+
             // Failsafe in case content block is missing
             const targetContent = document.getElementById('content-' + lang);
             if(targetContent) targetContent.classList.add('active');
-            
+
             document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
             document.getElementById('btn-' + lang).classList.add('active');
+            updateModeLabel();
         }
         function toggleExtraLangs(show) {
         const drawer = document.getElementById('extra-langs-drawer');
