@@ -935,8 +935,8 @@
             if (inner) inner.classList.toggle('show-team', teamVisible);
             document.querySelectorAll('.team-btn-trigger').forEach(btn => {
                 if (teamVisible) {
-                    btn.textContent = '[ ← ]';
-                    btn.setAttribute('data-glitch', '[ ← ]');
+                    btn.textContent = ' [ ← ] ';
+                    btn.setAttribute('data-glitch', '   ←   ');
                 } else {
                     btn.textContent = btn.getAttribute('data-original-text');
                     btn.setAttribute('data-glitch', btn.getAttribute('data-glitch-original'));
