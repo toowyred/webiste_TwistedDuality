@@ -4,7 +4,7 @@
     <link rel="icon" type="image/png" href="elements/favicon.png">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#0e0e0e" id="theme-color-meta">
+    <meta name="theme-color" content="#111619" id="theme-color-meta">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="google" content="notranslate" />
@@ -25,13 +25,16 @@
     <style>
         /* --- GLOBAL VARIABLES & RESET --- */
         :root {
-            --bg-color: #0e0e0e;
-            --text-color: #000000;
-            --glitch-color: #de7029;
-            --highlight-color: #de7029;
+            --bg-color: #111619;
+            --text-color: #ffffff;
+            --glitch-color: #b3a272;
+            --highlight-color: #ffffff;
             --tooltip-bg: rgba(10, 10, 10, 0.98);
         }
 
+        html {
+            background-color: #111619;
+        }
         body, html {
             margin: 0; padding: 0;
             background-color: transparent;
@@ -318,19 +321,23 @@
 
     </style>
     <script>
-        // Instant dark mode flash prevention — runs before render
-        if (localStorage.getItem('Light Out') === 'true') {
-            document.documentElement.style.setProperty('--text-color', '#ffffff');
-            document.documentElement.style.setProperty('--glitch-color', '#b3a272');
-            document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
+        // Instant flash prevention — dark is default, only switch to light if explicitly saved
+        if (localStorage.getItem('Light Out') === 'false') {
+            document.documentElement.style.setProperty('--text-color', '#000000');
+            document.documentElement.style.setProperty('--glitch-color', '#de7029');
+            document.documentElement.style.setProperty('--bg-color', '#ffffff');
+            document.documentElement.style.backgroundColor = '#ffffff';
         }
 
         // Background rotation (mobile 9:16, desktop 1:1)
         (function() {
             const isMobile = window.innerWidth <= 768;
 
-            const mobileBgs = ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png'];
-            const desktopBgs = ['pc-web-background-main-lightmode.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
+            const mobileBgs = ['web-background-darkmode-1.png', 'web-background-darkmode-2.png'];
+            const desktopBgs = ['pc-web-background-darkmode-1.png', 'pc-web-background-darkmode-2.png'];
+
+            const mobileLightBgs = ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png'];
+            const desktopLightBgs = ['pc-web-background-main-lightmode.png', 'pc-web-background-1-hole.png', 'pc-web-background-2-hole.png'];
 
             const mobileFallbacks = {
                 'web-background-main-lightmode.png': 'web-background.png',
@@ -343,12 +350,13 @@
                 'pc-web-background-2-hole.png': 'pc-web-background-2-solid.png'
             };
 
-            const bgs = isMobile ? mobileBgs : desktopBgs;
-            const fallbacks = isMobile ? mobileFallbacks : desktopFallbacks;
+            const isLight = localStorage.getItem('Light Out') === 'false';
+            const bgs = isLight ? (isMobile ? mobileLightBgs : desktopLightBgs) : (isMobile ? mobileBgs : desktopBgs);
+            const fallbacks = isLight ? (isMobile ? mobileFallbacks : desktopFallbacks) : {};
 
             function loadBackground() {
-                // Skip if dark mode is active — applyDarkMode handles its own BG
-                if (localStorage.getItem('Light Out') === 'true') return;
+                // Skip if light mode not active — applyDarkMode handles dark BG on toggle
+                if (!isLight) return;
 
                 const bgFile = bgs[Math.floor(Math.random() * bgs.length)];
                 const fallback = fallbacks[bgFile];
@@ -744,16 +752,16 @@
         };
 
         function toggleDarkMode() {
-            const isDark = localStorage.getItem('Light Out') === 'true';
-            localStorage.setItem('Light Out', isDark ? 'false' : 'true');
-            applyDarkMode(!isDark);
+            const isLight = localStorage.getItem('Light Out') === 'false';
+            localStorage.setItem('Light Out', isLight ? 'true' : 'false');
+            applyDarkMode(isLight);
         }
 
         function updateModeLabel() {
             const toggle = document.getElementById('mode-toggle');
             const label = toggle.querySelector('.mode-label');
             const lang = langState.current;
-            const isDark = localStorage.getItem('Light Out') === 'true';
+            const isDark = localStorage.getItem('Light Out') !== 'false';
             const labels = modeLabels[lang] || modeLabels.en;
             label.textContent = isDark ? labels.dark : labels.light;
             toggle.setAttribute('data-glitch', isDark ? labels.glitchDark : labels.glitchLight);
@@ -767,8 +775,9 @@
             if (dark) {
                 document.documentElement.style.setProperty('--text-color', '#ffffff');
                 document.documentElement.style.setProperty('--glitch-color', '#b3a272');
-                document.documentElement.style.setProperty('--bg-color', '#0e0e0e');
-                const tcMeta = document.getElementById('theme-color-meta'); if (tcMeta) tcMeta.content = '#0e0e0e';
+                document.documentElement.style.setProperty('--bg-color', '#111619');
+                document.documentElement.style.backgroundColor = '#111619';
+                const tcMeta = document.getElementById('theme-color-meta'); if (tcMeta) tcMeta.content = '#111619';
                 if (grid) {
                     const darkBgs = isMobile
                         ? ['web-background-darkmode-1.png', 'web-background-darkmode-2.png']
@@ -785,6 +794,7 @@
                 document.documentElement.style.setProperty('--text-color', '#000000');
                 document.documentElement.style.setProperty('--glitch-color', '#de7029');
                 document.documentElement.style.setProperty('--bg-color', '#ffffff');
+                document.documentElement.style.backgroundColor = '#ffffff';
                 const tcMetaL = document.getElementById('theme-color-meta'); if (tcMetaL) tcMetaL.content = '#ffffff';
                 const bgs = isMobile
                     ? ['web-background-main-lightmode.png', 'web-background-1-hole.png', 'web-background-2-hole.png']
@@ -819,7 +829,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            if (localStorage.getItem('Light Out') === 'true') applyDarkMode(true);
+            if (localStorage.getItem('Light Out') === 'false') applyDarkMode(false);
+            else applyDarkMode(true);
             initMatrix();
             randomizeLogos();
         });
