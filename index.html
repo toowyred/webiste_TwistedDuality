@@ -706,13 +706,13 @@
     </div>
 
     <div id="status-footer">
-        <div class="lang-en-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="CORE">核心</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWO FREQUENCIES. ONE VESSEL."</div>
-        <div class="lang-de-only">[ BE証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">KERN</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">BEREIT</span><br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
-        <div class="lang-es-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CENTRO</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LA_RED</span><br>"DOS FRECUENCIAS. UN RECIPIENTE."</div>
-        <div class="lang-fr-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CŒUR</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">EN_LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL&nbsp;NAVIRE."</div>
-        <div class="lang-nl-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">KERN</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">ONLINE</span><br>"TWEE FREQUENTIES. ÉÉN VAARTUIG."</div>
-        <div class="lang-vi-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CỐTLÕI</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">TRỰC_TUYẾN</span><br>"HAI TẦN&nbsp;SỐ. MỘT QUỸ&nbsp;ĐẠO"</div>
-        <div class="lang-pl-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">RDZEŃ</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()">POŁĄCZONY</span><br>"DWIE CZĘSTOTLIWOŚCI. JEDNA JEDNOSTKA."</div>
+        <div class="lang-en-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="CORE">核心</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="ONLINE" data-word-offline="OFFLINE">ONLINE</span><br>"TWO FREQUENCIES. ONE VESSEL."</div>
+        <div class="lang-de-only">[ BE証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">KERN</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="BEREIT" data-word-offline="GETRENNT">BEREIT</span><br>"ZWEI FREQUENZEN. EIN GEFÄSS."</div>
+        <div class="lang-es-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CENTRO</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="EN_LA_RED" data-word-offline="DESCONECTADO">EN_LA_RED</span><br>"DOS FRECUENCIAS. UN RECIPIENTE."</div>
+        <div class="lang-fr-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CŒUR</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="EN_LIGNE" data-word-offline="HORS_LIGNE">EN_LIGNE</span><br>"DEUX FRÉQUENCES. UN SEUL&nbsp;NAVIRE."</div>
+        <div class="lang-nl-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">KERN</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="ONLINE" data-word-offline="OFFLINE">ONLINE</span><br>"TWEE FREQUENTIES. ÉÉN VAARTUIG."</div>
+        <div class="lang-vi-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">CỐTLÕI</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="TRỰC_TUYẾN" data-word-offline="NGOẠI_TUYẾN">TRỰC_TUYẾN</span><br>"HAI TẦN&nbsp;SỐ. MỘT QUỸ&nbsp;ĐẠO"</div>
+        <div class="lang-pl-only">[ AU証：<span class="lore-glitch stationary-glitch notranslate" data-glitch="核心">RDZEŃ</span> ] -> STATUS: <span class="online-status" onclick="checkPassword()" data-word-online="POŁĄCZONY" data-word-offline="ROZŁĄCZONY">POŁĄCZONY</span><br>"DWIE CZĘSTOTLIWOŚCI. JEDNA JEDNOSTKA."</div>
     </div>
 
     <div id="credit-footer"><span onclick="openAdminPanel()" style="cursor:default;user-select:none;">&copy;</span> 2024&ndash;2025 Twisted&nbsp;Duality&trade; &amp; Reimagined&trade; &mdash; contrusted by <a href="https://instagram.com/wyred.on" target="_blank">@wyred.on</a></div>
@@ -1168,6 +1168,15 @@
                     } else if (!data.onair) {
                         clearInterval(window._onairInterval);
                     }
+                    // Update STATUS: ONLINE/OFFLINE based on data.online field
+                    // Falls back to true if field is absent (backwards compat)
+                    const isOnline = data.online !== false;
+                    document.querySelectorAll('.online-status').forEach(span => {
+                        span.textContent = isOnline
+                            ? (span.dataset.wordOnline  || span.textContent)
+                            : (span.dataset.wordOffline || 'OFFLINE');
+                        span.style.opacity = isOnline ? '' : '0.35';
+                    });
                 })
                 .catch(() => {}); // silently fail — never breaks the page
         }
@@ -1227,7 +1236,7 @@
         function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
 
         // ON AIR cycling labels
-        const onairLabels = ['録音中','Opname','Grabando','Enregistrement','ON&nbspAIR','Aufnahme','录音中','ON&nbspAIR','Đang&nbspthu','REC','En cours','ON&nbspAIR'];
+        const onairLabels = ['録音中','Opname','Grabando','Enregistrement','ON AIR','Aufnahme','录音中','ON AIR','Đang thu','REC','En cours','ON AIR'];
         let onairIdx = 0;
         function cycleOnAir() {
             const label = document.getElementById('onair-label');
