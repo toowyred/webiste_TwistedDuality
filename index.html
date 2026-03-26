@@ -169,17 +169,92 @@
 
         /* --- THE ORANGE TERMINAL (ABOUT SECTOR) --- */
         #about-sector {
-            display: none; 
-            margin-top: 20px; 
-            margin-bottom: 40px; 
+            display: none;
+            position: relative;
+            margin-top: 20px;
+            margin-bottom: 40px;
             padding: 30px 20px;
-            background: #de7029 !important; 
-            color: #000000;      
-            text-align: left; 
+            background: #de7029 !important;
+            color: #000000;
+            text-align: left;
             border: 2px solid #000000;
             box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
             --glitch-color: #ffffff;
             --highlight-color: #ffffff;
+        }
+
+        /* --- LOG HEADER ROW (button + path) --- */
+        .log-header-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 15px; }
+        .log-header-row .log-header { margin-bottom: 0; }
+        .cmd-trigger { display: inline !important; width: auto !important; margin: 0 !important; padding: 0 !important; font-size: 0.7rem !important; letter-spacing: 2px; font-weight: bold; color: rgba(0,0,0,0.6); cursor: pointer; white-space: nowrap; border: none; text-decoration: underline; text-underline-offset: 2px; }
+        .cmd-trigger:hover, .cmd-trigger:active { color: #ffffff !important; }
+
+        /* --- CMD OVERLAY PANEL --- */
+        #cmd-panel {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #0c0c0c;
+            border: 2px solid #de7029;
+            z-index: 10;
+            padding: 24px 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #cccccc;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        #cmd-panel.active { display: flex; }
+        .cmd-line { font-size: 0.72rem; letter-spacing: 0.5px; margin-bottom: 2px; line-height: 1.6; }
+        .cmd-header { color: #999999; }
+        .cmd-path { color: #cccccc; }
+        .cmd-warning { color: #f2f248; }
+        .cmd-prompt { color: #cccccc; }
+        .cmd-cursor { animation: cmd-blink 1s step-end infinite; }
+        @keyframes cmd-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .cmd-actions { display: flex; gap: 16px; margin-top: 12px; }
+        .cmd-btn { font-size: 0.75rem; letter-spacing: 1px; cursor: pointer; padding: 2px 14px; border: 1px solid #555; color: #cccccc; transition: all 0.15s ease; font-family: 'Consolas', 'Courier New', monospace; }
+        .cmd-btn:hover { background: #cccccc; color: #0c0c0c; }
+        .cmd-input { background: transparent; border: none; outline: none; color: #cccccc; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.72rem; letter-spacing: 0.5px; width: 10ch; padding: 0; margin: 0; caret-color: transparent; }
+        .cmd-sass { font-size: 0.68rem; color: #ff4444; margin-top: 6px; min-height: 1.2em; letter-spacing: 0.5px; }
+        #cmd-qr { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 20; align-items: center; justify-content: center; background: rgba(0,0,0,0.72); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; flex-direction: column; }
+        #cmd-qr.active { display: flex; }
+        #cmd-qr canvas { pointer-events: none; image-rendering: pixelated; }
+        #cmd-qr-fakeid { position: absolute; top: 12px; right: 14px; font-family: 'Consolas', 'Courier New', monospace; font-size: 1.2rem; font-weight: bold; color: #de7029; letter-spacing: 2px; }
+        #cmd-qr-hint { margin-top: 10px; font-family: 'Consolas', 'Courier New', monospace; font-size: 0.62rem; color: #de7029; letter-spacing: 1px; opacity: 0.85; text-align: center; }
+        .cmd-copyright { position: absolute; bottom: 12px; left: 20px; font-size: 0.6rem; color: #555; letter-spacing: 0.5px; }
+
+        /* --- PREFACE TRANSITION --- */
+        .site-fading .main-terminal { transition: opacity 0.6s ease; opacity: 0.15; pointer-events: none; }
+        .site-fading #about-sector { transition: opacity 0.8s ease 0.4s; }
+        .site-fading.about-fade #about-sector { opacity: 0; }
+
+        /* --- PREFACE VIEW --- */
+        #preface-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 500;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #111619;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+        #preface-view.active { opacity: 1; }
+        .preface-content {
+            max-width: 500px;
+            padding: 40px 20px;
+            text-align: left;
+            color: #ffffff;
+            font-family: 'WDXL Lubrifont JP N', monospace;
+        }
+        .preface-text {
+            font-size: 0.85rem;
+            line-height: 1.8;
+            letter-spacing: 1px;
+            opacity: 0.6;
+            margin-top: 20px;
         }
 
         #about-sector .sync-group, #about-sector .lore-glitch, #about-sector .close-btn-aligned, #about-sector span { font-family: 'WDXL Lubrifont JP N', sans-serif !important; transition: color 0.2s ease; }
@@ -462,7 +537,7 @@
 </div>
 
     <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</div>
-    <div id="build-tag">0325<br>1851</div>
+    <div id="build-tag">0326<br>1410</div>
 
     <div class="main-terminal">
         <video class="main-logo" id="logo-video" autoplay muted playsinline style="mix-blend-mode: multiply;">
@@ -618,68 +693,108 @@
         <div style="height: 80vh; width: 100%;"></div>
 
         <div id="about-sector">
+            <!-- CMD OVERLAY PANEL -->
+            <div id="cmd-panel" oncontextmenu="return false">
+                <div class="cmd-line cmd-header" id="cmd-device-line"></div>
+                <div class="cmd-line cmd-header" id="cmd-session-line"></div>
+                <br>
+                <div class="cmd-line cmd-path">C:\TD\NETWORK&gt; cmd /c td preface --runas admin</div>
+                <br>
+                <div class="cmd-line cmd-warning">WARNING: Navigating outside network boundary.</div>
+                <div class="cmd-line cmd-warning">This operation requires elevated privileges.</div>
+                <br>
+                <div class="cmd-line cmd-prompt">Proceed? (Y/N): <input type="text" id="cmd-input" class="cmd-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="20"><span class="cmd-cursor">█</span></div>
+                <div class="cmd-sass" id="cmd-sass"></div>
+                <div class="cmd-actions">
+                    <span class="cmd-btn cmd-enter" onclick="executePreface()">Y</span>
+                    <span class="cmd-btn cmd-cancel" onclick="closeCmdPanel()">N</span>
+                </div>
+                <div id="cmd-qr"></div>
+                <div class="cmd-copyright">(c) Twisted Duality Corporation. All rights reserved.</div>
+            </div>
             <div class="about-slider">
                 <div class="about-slide-inner" id="about-slide-inner">
 
                     <div id="about-main">
                         <div class="lang-en-only">
-                            <div class="log-header">//: LOG_START [PERSONA_ARCHIVE]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 We <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construct</span><br> <span class="lore-glitch" data-glitch="W&nbsp;A&nbsp;V&nbsp;E&nbsp;S">[&nbsp;SOUND&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;EMOTION&nbsp;]</span> into immersive landscapes.
                                 From melodic beauty to <span class="sync-group sync-henyi">industrial&nbsp;decay</span>. This is the heartbeat of the vessel.
                                 Where worlds are unmade and <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINED</span>.
                             </p>
                         </div>
                         <div class="lang-de-only">
-                            <div class="log-header">//: LOG_START [PERSONEN_ARCHIV]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 Wir <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruieren</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;KLANG&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;EMOTION&nbsp;]</span> durch <span class="sync-group sync-henyi">extreme&nbsp;Manipulation</span>.<br>
                                 Von der Schönheit des Lichts bis zum Zerfall der Schatten—der Herzschlag des Universums.
                                 Hier werden Welten aufgelöst und <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">NEU&nbsp;ERDACHT</span>.
                             </p>
                         </div>
                         <div class="lang-es-only">
-                            <div class="log-header">//: LOG_START [ARCHIVO_PERSONAL]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 Nosotros <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construimos</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;SONIDO&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;EMOCIÓN&nbsp;]</span> en paisajes envolventes.
                                 De la belleza melódica a la <span class="sync-group sync-henyi">decadencia&nbsp;industrial</span>. Este es el latido de la nave.
                                 Donde los mundos son deshechos y <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REIMAGINADOS</span>.
                             </p>
                         </div>
                         <div class="lang-fr-only">
-                            <div class="log-header">//: LOG_START [ARCHIVE_PERSONA]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 Nous <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construisons</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;SON&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;ÉMOTION&nbsp;]</span> en paysages immersifs.
                                 De la beauté mélodique au <span class="sync-group sync-henyi">délitement&nbsp;industriel</span>. Voici la&nbsp;pulsation du&nbsp;vaisseau.
                                 Où les mondes sont détissés et&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">REFORGÉS</span>.
                             </p>
                         </div>
                         <div class="lang-nl-only">
-                            <div class="log-header">//: LOG_START [PERSONEN_ARCHIEF]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 Wij <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/construeren</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;GELUID&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;EMOTIE&nbsp;]</span> tot immersieve landschappen.
                                 Van melodische schoonheid tot <span class="sync-group sync-henyi">industrieel&nbsp;verval</span>. Dit is de hartslag van het vaartuig.
                                 Waar werelden worden ontrafeld en&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">HERGESCHAPEN</span>.
                             </p>
                         </div>
                         <div class="lang-vi-only">
-                            <div class="log-header">//: LOG_START [LƯUTRỮ_CÁNHÂN]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 Chúng&nbsp;tôi <span class="sync-group sync-sokuji"><span class="vi-toggle"></span>/cấu&nbsp;trúc</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;ÂM&nbsp;THANH&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;CẢM&nbsp;XÚC&nbsp;]</span> thành những cảm&nbsp;xúc đắm&nbsp;chìm.
                                 Từ vẻ đẹp của giai&nbsp;điệu đến cực&nbsp;đỉnh <span class="sync-group sync-henyi">tan&nbsp;rã tâm&nbsp;hồn</span>. Nơi đây tạo ra nhịp&nbsp;đập của bản&nbsp;thể.
                                 Nơi thế&nbsp;giới và ký&nbsp;ức xưa được tháo gỡ và <span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">TÁI&nbsp;TẠO&nbsp;LẠI</span> cảm&nbsp;xúc mới.
                             </p>
                         </div>
                         <div class="lang-pl-only">
-                            <div class="log-header">//: LOG_START [ARCHIWUM_OSÓB]</div>
+                            <div class="log-header-row">
+                                <span class="cmd-trigger" onclick="openCmdPanel()">[ run_cmd ]</span>
+                                <span class="log-header">TD:// LOGS.PERSONA_ARCHIVE</span>
+                            </div>
                             <p style="font-size: 0.85rem; line-height: 1.8; margin-bottom: 15px; font-family: monospace;">
-                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> // <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
+                                <span class="lore-glitch stationary-glitch dictionary-trigger notranslate" data-glitch="双極の螺旋"><span class="notranslate">Twisted&nbsp;Duality</span></span> <span style="font-family: 'WDXL Lubrifont JP N', sans-serif;">//</span> <span class="sync-group sync-sokuji">創作</span> <span style="font-family: 'WDXL Lubrifont JP N';">to</span> <span class="sync-group sync-henyi">変異</span><br><br>
                                 My <span class="sync-group sync-sokuji"><span class="rede-toggle"></span>/konstruujemy</span><br> <span class="lore-glitch" data-glitch="S&nbsp;O&nbsp;U&nbsp;N&nbsp;D">[&nbsp;DŹWIĘK&nbsp;]</span> + <span class="lore-glitch glitch-rare" data-glitch="UWU&nbsp;(:&nbsp;ON">[&nbsp;EMOCJĘ&nbsp;]</span> w immersyjne krajobrazy.
                                 Od melodyjnego piękna po <span class="sync-group sync-henyi">industrialny rozpad</span>. Oto tętno jednostki.
                                 Gdzie światy są rozplatane i&nbsp;<span class="lore-glitch stationary-glitch" data-glitch="サイコウチク">PRZEKUTE</span>.
@@ -752,6 +867,7 @@
     </div>
 
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script>
         // --- SCROLL TO TOP ON REFRESH ---
         if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -1167,6 +1283,245 @@
                 resetTeam();
             }
         }
+
+        // --- CMD PANEL (PREFACE PORTAL) ---
+        let cmdPanelOpen = false;
+        const cmdPanel = document.getElementById('cmd-panel');
+        const cmdInput = document.getElementById('cmd-input');
+        const cmdSass = document.getElementById('cmd-sass');
+        const CMD_SECRET = 'KANA';
+        let sessionGroup1 = '', sessionGroup2 = '';
+
+        function getCmdDeviceLine() {
+            const ua = navigator.userAgent;
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '.');
+            let name, ver;
+            if (/iPad|iPhone|iPod/.test(ua)) {
+                name = 'iBrick';
+                const m = ua.match(/OS (\d+[_\.]\d+)/);
+                ver = m ? m[1].replace('_', '.') : 'unknown';
+            } else if (/Android/.test(ua)) {
+                name = 'GoogleDroid';
+                const m = ua.match(/Android ([\d.]+)/);
+                ver = m ? m[1] : 'unknown';
+            } else if (/Macintosh|Mac OS/.test(ua)) {
+                name = 'Snapple';
+                ver = today;
+            } else if (/Windows/.test(ua)) {
+                name = 'Microslop';
+                ver = today;
+            } else {
+                name = navigator.platform || 'Unknown';
+                ver = today;
+            }
+            return 'Device: ' + name + ' [Version TD.' + ver + ']';
+        }
+
+        function generateSessionNo() {
+            const rD = () => Math.floor(Math.random() * 10);
+            const rL = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
+            sessionGroup1 = '' + rD() + rD() + rD();
+            sessionGroup2 = '' + rD() + rD() + rD();
+            return sessionGroup1 + rL() + rD() + rL() + sessionGroup2 + rL();
+        }
+
+        function generateQRString() {
+            const rD = () => Math.floor(Math.random() * 10);
+            const rDs = (n) => Array.from({length: n}, rD).join('');
+            const prefix = rDs(1 + Math.floor(Math.random() * 4));
+            const middle = rDs(2 + Math.floor(Math.random() * 6));
+            const suffix = rDs(1 + Math.floor(Math.random() * 4));
+            const swap = Math.random() > 0.5;
+            const a = swap ? sessionGroup2 : sessionGroup1;
+            const b = swap ? sessionGroup1 : sessionGroup2;
+            return prefix + a + middle + b + suffix;
+        }
+
+        const yesNoWords = ['yes','no','y','n','ja','nein','sí','si','oui','non','nee','có','không','vâng','tak','nie','はい','いいえ','da','evet','hayır'];
+        const sassMessages = [
+            'These two buttons are here for a reason.',
+            'Seriously?',
+            '...you see the Y and N buttons, right?',
+            'Terminal literacy: 0',
+            'This isn\'t a conversation.',
+            'Bold move for someone outside the network.',
+            'The buttons. Use the buttons.',
+            'Bro.',
+            'You typed that and felt good about it?',
+            'Not a chatbot. Try the buttons.',
+            'ACCESS DENIED (by common sense)',
+            'Still not how this works.',
+            'Do you also shake the vending machine?',
+        ];
+        let randomAttempts = 0;
+        const persistentSass = [
+            'yeah right keep trying',
+            'still going huh',
+            'really committed to failing',
+            'log will be flagged. (it won\'t. but still.)',
+            '...respect the grind I guess',
+        ];
+
+        function openCmdPanel() {
+            document.getElementById('cmd-device-line').textContent = getCmdDeviceLine();
+            document.getElementById('cmd-session-line').textContent = 'Session No: ' + generateSessionNo();
+            cmdInput.value = '';
+            cmdSass.textContent = '';
+            document.getElementById('cmd-qr').innerHTML = '';
+            cmdPanel.classList.add('active');
+            cmdPanelOpen = true;
+            document.addEventListener('keydown', cmdKeyHandler);
+            setTimeout(() => cmdInput.focus(), 100);
+        }
+
+        function closeCmdPanel() {
+            cmdPanel.classList.remove('active');
+            cmdPanelOpen = false;
+            cmdInput.value = '';
+            cmdSass.textContent = '';
+            randomAttempts = 0;
+            const qrEl = document.getElementById('cmd-qr');
+            qrEl.classList.remove('active');
+            qrEl.innerHTML = '';
+            document.removeEventListener('keydown', cmdKeyHandler);
+        }
+
+        cmdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                const val = cmdInput.value.trim().toLowerCase();
+                if (yesNoWords.includes(val)) {
+                    cmdSass.textContent = sassMessages[Math.floor(Math.random() * sassMessages.length)];
+                    cmdInput.value = '';
+                } else if (val.toUpperCase() === CMD_SECRET) {
+                    cmdSass.textContent = '';
+                    randomAttempts = 0;
+                    showQR();
+                    cmdInput.value = '';
+                } else if (val) {
+                    randomAttempts++;
+                    if (randomAttempts >= 10) {
+                        cmdSass.textContent = persistentSass[Math.floor(Math.random() * persistentSass.length)];
+                    } else if (randomAttempts >= 5) {
+                        cmdSass.textContent = 'yeah right keep trying';
+                    } else {
+                        cmdSass.textContent = '';
+                    }
+                    cmdInput.value = '';
+                }
+                return;
+            }
+            if (e.key === 'Escape') { e.preventDefault(); closeCmdPanel(); }
+        });
+
+        function cmdKeyHandler(e) {
+            if (!cmdPanelOpen) return;
+            if (e.target === cmdInput) return;
+            if (e.key === 'Enter') { e.preventDefault(); executePreface(); }
+            if (e.key === 'Escape') { e.preventDefault(); closeCmdPanel(); }
+        }
+
+        function showQR() {
+            const qrContainer = document.getElementById('cmd-qr');
+            qrContainer.innerHTML = '';
+            if (typeof qrcode === 'undefined') return;
+            const qrData = generateQRString();
+            const qr = qrcode(0, 'M');
+            qr.addData(qrData);
+            qr.make();
+            const size = 6;
+            const moduleCount = qr.getModuleCount();
+            const canvas = document.createElement('canvas');
+            canvas.width = moduleCount * size;
+            canvas.height = moduleCount * size;
+            canvas.style.width = (moduleCount * size) + 'px';
+            canvas.style.height = (moduleCount * size) + 'px';
+            canvas.draggable = false;
+            canvas.oncontextmenu = function() { return false; };
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0c0c0c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#de7029';
+            for (let r = 0; r < moduleCount; r++) {
+                for (let c = 0; c < moduleCount; c++) {
+                    if (qr.isDark(r, c)) ctx.fillRect(c * size, r * size, size, size);
+                }
+            }
+            const fakeId = Array.from({length: 6}, () => Math.floor(Math.random() * 10)).join('');
+            const fakeIdEl = document.createElement('div');
+            fakeIdEl.id = 'cmd-qr-fakeid';
+            fakeIdEl.textContent = 'ID: ' + fakeId;
+            qrContainer.appendChild(fakeIdEl);
+            qrContainer.appendChild(canvas);
+            const hint = document.createElement('div');
+            hint.id = 'cmd-qr-hint';
+            hint.textContent = 'Screenshot must include device\'s time and ID';
+            qrContainer.appendChild(hint);
+            qrContainer.classList.add('active');
+            qrContainer.onclick = function() { qrContainer.classList.remove('active'); qrContainer.innerHTML = ''; };
+        }
+
+        function executePreface() {
+            closeCmdPanel();
+            const body = document.body;
+            body.classList.add('site-fading');
+
+            // Phase 1: main content fades (0.6s)
+            setTimeout(() => {
+                // Phase 2: orange panel fades out
+                body.classList.add('about-fade');
+            }, 600);
+
+            setTimeout(() => {
+                // Phase 3: push URL, swap to preface view
+                history.pushState({ view: 'preface' }, '', '/preface');
+                document.getElementById('about-sector').style.display = 'none';
+                body.classList.remove('site-fading', 'about-fade');
+                showPrefaceView();
+            }, 1400);
+        }
+
+        function showPrefaceView() {
+            // Hide main terminal
+            const terminal = document.querySelector('.main-terminal');
+            if (terminal) terminal.style.display = 'none';
+
+            // Create or show preface view
+            let preface = document.getElementById('preface-view');
+            if (!preface) {
+                preface = document.createElement('div');
+                preface.id = 'preface-view';
+                preface.innerHTML = '<div class="preface-content">' +
+                    '<div class="log-header" style="color: rgba(255,255,255,0.4);">TD:// LOGS.PERSONA_ARCHIVE --extended</div>' +
+                    '<p class="preface-text">[ AWAITING CONTENT ]</p>' +
+                    '<a href="javascript:void(0)" onclick="exitPreface()" class="nav-link stationary-glitch" data-glitch="[ 帰還 ]" style="margin-top: 40px;">[ return ]</a>' +
+                    '</div>';
+                document.body.appendChild(preface);
+            }
+            preface.style.display = 'flex';
+            // Staggered fade-in
+            requestAnimationFrame(() => preface.classList.add('active'));
+        }
+
+        function exitPreface() {
+            const preface = document.getElementById('preface-view');
+            if (preface) {
+                preface.classList.remove('active');
+                setTimeout(() => {
+                    preface.style.display = 'none';
+                    const terminal = document.querySelector('.main-terminal');
+                    if (terminal) { terminal.style.display = ''; terminal.style.opacity = ''; }
+                    history.pushState({ view: 'main' }, '', '/');
+                }, 600);
+            }
+        }
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.view === 'preface') { showPrefaceView(); }
+            else { exitPreface(); }
+        });
 
         function checkPassword() {
             const password = prompt('[ ENTER TRANSMISSION CODE ]');
