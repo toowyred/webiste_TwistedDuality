@@ -59,7 +59,7 @@
             width: 100vw;
             height: 100vh;
             background: var(--bg-color, #fff) no-repeat center center;
-            background-size: contain;
+            background-size: auto 100%;
             z-index: -1;
             transition: opacity 0.5s ease;
             transform: translateZ(0);
@@ -143,6 +143,12 @@
         .mode-toggle:hover { opacity: 1; }
         .mode-toggle:hover .mode-label { opacity: 0; }
         .mode-toggle:hover::after { content: attr(data-glitch); position: absolute; left: 0; width: 100%; text-align: right; color: var(--glitch-color); animation: stationary-flicker 0.3s steps(2) infinite; font-family: 'WDXL Lubrifont JP N', sans-serif; white-space: nowrap; }
+
+        .space-toggle { cursor: pointer; opacity: 0.45; transition: opacity 0.3s; color: var(--text-color); font-size: 0.65rem; letter-spacing: 1px; position: relative; display: inline-block; padding-bottom: 8px; margin-bottom: 4px; border-bottom: 1px solid rgba(0,0,0,0.15); }
+        .space-toggle:hover { opacity: 1; }
+        .space-toggle:hover .space-label { opacity: 0; }
+        .space-toggle:hover::after { content: attr(data-glitch); position: absolute; left: 0; width: 100%; text-align: right; color: var(--glitch-color); animation: stationary-flicker 0.3s steps(2) infinite; font-family: 'WDXL Lubrifont JP N', sans-serif; white-space: nowrap; }
+        .space-toggle.active { opacity: 1; color: #6b8fff; border-bottom-color: #6b8fff; }
 
         /* --- SPACE MODE — 9:16 letterboxed frame --- */
         .space-mode { background-color: #000000 !important; }
@@ -393,21 +399,21 @@
                 if (isHole && !isActualMobile) {
                     // Non-phone: live canvas behind hole PNG — no GIF needed
                     grid.style.backgroundImage = `url(elements/${bgFile})`;
-                    grid.style.backgroundSize = 'contain';
+                    grid.style.backgroundSize = 'auto 100%';
                     grid.style.backgroundPosition = 'center center';
                     grid.style.backgroundRepeat = 'no-repeat';
                     positionAndStartMatrix(grid);
                 } else if (isHole) {
                     // Actual phone/tablet: GIF layer
                     grid.style.backgroundImage = `url(elements/${bgFile}), url(elements/matrix-fone.gif)`;
-                    grid.style.backgroundSize = 'contain, contain';
+                    grid.style.backgroundSize = 'auto 100%, auto 100%';
                     grid.style.backgroundPosition = 'center center, center center';
                     grid.style.backgroundRepeat = 'no-repeat, no-repeat';
                 } else {
                     stopMatrix(grid);
                     // Single layer: just the solid BG
                     grid.style.backgroundImage = `url(elements/${bgFile})`;
-                    grid.style.backgroundSize = 'contain';
+                    grid.style.backgroundSize = 'auto 100%';
                     grid.style.backgroundPosition = 'center center';
                     grid.style.backgroundRepeat = 'no-repeat';
                 }
@@ -438,7 +444,8 @@
     </div>
 
     <div class="lang-switch" id="lang-container">
-    <span class="mode-toggle" id="mode-toggle" data-glitch="Unplug?" onclick="cycleMode()"><span class="mode-label">Dark  </span></span>
+    <span class="mode-toggle" id="mode-toggle" data-glitch="Unplug?" onclick="toggleDarkLight()"><span class="mode-label">Dark  </span></span>
+    <span class="space-toggle" id="space-toggle" data-glitch="Orbit?" onclick="toggleSpace()"><span class="space-label">Space </span></span>
     <span class="lang-btn active" id="btn-en" onclick="setLanguage('en')" data-glitch="アメリカ">EN英語</span>
     <span class="lang-btn" id="btn-de" onclick="setLanguage('de')" data-glitch="ドイツ語">DE独語</span>
 
@@ -455,7 +462,7 @@
 </div>
 
     <div id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">↑</div>
-    <div id="build-tag">0325<br>1843</div>
+    <div id="build-tag">0325<br>1849</div>
 
     <div class="main-terminal">
         <video class="main-logo" id="logo-video" autoplay muted playsinline style="mix-blend-mode: multiply;">
@@ -774,12 +781,22 @@
             pl: { light: 'Jasny\xa0', dark: 'Ciemny', space: 'Kosmos', glitchLight: 'Wylacyc?\xa0', glitchDark: 'Zapalic?\xa0', glitchSpace: 'Orbita?\xa0' }
         };
 
-        function cycleMode() {
-            const current = localStorage.getItem('td_mode') || (localStorage.getItem('Light Out') === 'false' ? 'light' : 'dark');
-            const next = current === 'dark' ? 'light' : current === 'light' ? 'space' : 'dark';
+        function toggleDarkLight() {
+            const current = localStorage.getItem('td_mode') || 'dark';
+            const next = (current === 'dark' || current === 'space') ? 'light' : 'dark';
             localStorage.setItem('td_mode', next);
-            if (next === 'space') applySpaceMode();
-            else applyDarkMode(next === 'dark');
+            applyDarkMode(next === 'dark');
+        }
+
+        function toggleSpace() {
+            const current = localStorage.getItem('td_mode') || 'dark';
+            if (current === 'space') {
+                localStorage.setItem('td_mode', 'dark');
+                applyDarkMode(true);
+            } else {
+                localStorage.setItem('td_mode', 'space');
+                applySpaceMode();
+            }
         }
 
         function updateModeLabel() {
@@ -788,12 +805,23 @@
             const lang = langState.current;
             const mode = localStorage.getItem('td_mode') || (localStorage.getItem('Light Out') === 'false' ? 'light' : 'dark');
             const labels = modeLabels[lang] || modeLabels.en;
-            if (mode === 'space') {
-                label.textContent = labels.space || 'Space ';
-                toggle.setAttribute('data-glitch', labels.glitchSpace || 'Orbit? ');
-            } else {
-                label.textContent = mode === 'dark' ? labels.dark : labels.light;
-                toggle.setAttribute('data-glitch', mode === 'dark' ? labels.glitchDark : labels.glitchLight);
+            // Dark/Light toggle always shows current dark/light state
+            const isDark = (mode === 'dark' || mode === 'space');
+            label.textContent = isDark ? labels.dark : labels.light;
+            toggle.setAttribute('data-glitch', isDark ? labels.glitchDark : labels.glitchLight);
+            // Space toggle: active = in space, inactive = not in space
+            const spaceToggle = document.getElementById('space-toggle');
+            if (spaceToggle) {
+                const spaceLabel = spaceToggle.querySelector('.space-label');
+                if (mode === 'space') {
+                    spaceToggle.classList.add('active');
+                    spaceToggle.setAttribute('data-glitch', 'Earth');
+                    if (spaceLabel) spaceLabel.textContent = labels.space || 'Space ';
+                } else {
+                    spaceToggle.classList.remove('active');
+                    spaceToggle.setAttribute('data-glitch', labels.glitchSpace || 'Orbit? ');
+                    if (spaceLabel) spaceLabel.textContent = labels.space || 'Space ';
+                }
             }
         }
 
@@ -841,7 +869,7 @@
                     setTimeout(() => {
                         if (!isActualMobile && isHoleBg) {
                             grid.style.backgroundImage = 'url(elements/' + bg + ')';
-                            grid.style.backgroundSize = 'contain';
+                            grid.style.backgroundSize = 'auto 100%';
                             grid.style.backgroundPosition = 'center center';
                             grid.style.backgroundRepeat = 'no-repeat';
                             grid.style.opacity = '1';
@@ -849,14 +877,14 @@
                         } else if (isActualMobile && isHoleBg) {
                             stopMatrix(grid);
                             grid.style.backgroundImage = 'url(elements/' + bg + '), url(elements/matrix-fone.gif)';
-                            grid.style.backgroundSize = 'contain, contain';
+                            grid.style.backgroundSize = 'auto 100%, auto 100%';
                             grid.style.backgroundPosition = 'center center, center center';
                             grid.style.backgroundRepeat = 'no-repeat, no-repeat';
                             grid.style.opacity = '1';
                         } else {
                             stopMatrix(grid);
                             grid.style.backgroundImage = 'url(elements/' + bg + ')';
-                            grid.style.backgroundSize = 'contain';
+                            grid.style.backgroundSize = 'auto 100%';
                             grid.style.backgroundPosition = 'center center';
                             grid.style.backgroundRepeat = 'no-repeat';
                             grid.style.opacity = '1';
@@ -930,7 +958,7 @@
             const canvas = document.getElementById('matrix-canvas');
             if (!canvas) return;
             const vw = window.innerWidth, vh = window.innerHeight;
-            const size = Math.min(vw, vh);
+            const size = vh; // height-based: image is auto 100% so square at vh x vh
             canvas.style.left = ((vw - size) / 2) + 'px';
             canvas.style.top  = ((vh - size) / 2) + 'px';
             canvas.style.display = 'block';
