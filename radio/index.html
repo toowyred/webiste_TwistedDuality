@@ -284,6 +284,7 @@
   .card-body .v.access-none { color: var(--crit); }
   .card-body .v.status-good,
   .card-body .v.access-granted { color: var(--good); }
+  .card-body .v.access-check { color: var(--accent); }
   .card-body .v.tap {
     cursor: pointer;
     border-bottom: 1px dotted currentColor;
@@ -293,6 +294,7 @@
   .card-body .v.tap:hover,
   .card-body .v.tap:focus-visible { text-shadow: 0 0 6px currentColor; outline: none; }
   .card-body .v.tap.access-granted { color: var(--good); }
+  .card-body .v.tap.access-check   { color: var(--accent); }
   .card-body .v.tap.access-none    { color: var(--crit); }
 
   /* empty state: no track yet — hide all rows except Signal, show "(press SCAN)" */
@@ -606,6 +608,11 @@
   }
   .info-body .track-title {
     font-size: 16px; letter-spacing: 1px; color: var(--fg);
+    margin-bottom: 8px;
+  }
+  .info-body .msg-body {
+    font-size: 13px; line-height: 1.55;
+    color: var(--fg);
     margin-bottom: 12px;
   }
   .info-body .link-list {
@@ -931,6 +938,20 @@ const I18N = {
     'press-scan': '(press SCAN)',
     'unit-kbps': 'Kbps',
     'unit-signal': 'signal',
+    'dlg-title-granted': 'TRACK RELEASED',
+    'dlg-title-check':   'TRACK \u00B7 CHECK IT OUT',
+    'dlg-title-none':    'TRACK NOT YET RELEASED',
+    'dlg-msg-granted':   'This track is released!',
+    'dlg-msg-check':     'Check this one out.',
+    'dlg-msg-none':      'This track is not yet released.',
+    'dlg-id':            'ID:',
+    'dlg-message':       'MESSAGE:',
+    'dlg-listen':        'LISTEN ON:',
+    'dlg-no-links':      '(no links on file yet)',
+    'dlg-close':         '[ CLOSE ]',
+    'dlg-nag-intro':     'You can',
+    'dlg-nag-link':      'nag us',
+    'dlg-nag-outro':     'on Instagram.',
     'm-signal': 'SIGNAL',
     'm-decoder': 'DECODER',
     'm-status': 'STATUS',
@@ -964,6 +985,20 @@ const I18N = {
     'press-scan': '(SUCHE dr\u00FCcken)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'Signal',
+    'dlg-title-granted': 'TRACK VER\u00D6FFENTLICHT',
+    'dlg-title-check':   'TRACK \u00B7 H\u00D6R REIN',
+    'dlg-title-none':    'NOCH NICHT VER\u00D6FFENTLICHT',
+    'dlg-msg-granted':   'Dieser Track ist ver\u00F6ffentlicht!',
+    'dlg-msg-check':     'Schau dir das mal an.',
+    'dlg-msg-none':      'Dieser Track ist noch nicht ver\u00F6ffentlicht.',
+    'dlg-id':            'ID:',
+    'dlg-message':       'NACHRICHT:',
+    'dlg-listen':        'ANH\u00D6REN BEI:',
+    'dlg-no-links':      '(noch keine Links hinterlegt)',
+    'dlg-close':         '[ SCHLIESSEN ]',
+    'dlg-nag-intro':     'Du kannst uns auf Instagram',
+    'dlg-nag-link':      'anschreiben',
+    'dlg-nag-outro':     '.',
     'm-signal': 'SIGNAL',
     'm-decoder': 'DEKODER',
     'm-status': 'STATUS',
@@ -997,6 +1032,20 @@ const I18N = {
     'press-scan': '(\u8D70\u67FB\u3092\u62BC\u3059)',
     'unit-kbps': 'Kb/\u79D2',
     'unit-signal': '\u4FE1\u53F7',
+    'dlg-title-granted': '\u30EA\u30EA\u30FC\u30B9\u6E08\u307F',               /* リリース済み */
+    'dlg-title-check':   '\u30C1\u30A7\u30C3\u30AF\u3057\u3066\u307F\u3066', /* チェックしてみて */
+    'dlg-title-none':    '\u672A\u767A\u8868',                                 /* 未発表 */
+    'dlg-msg-granted':   '\u3053\u306E\u30C8\u30E9\u30C3\u30AF\u306F\u30EA\u30EA\u30FC\u30B9\u6E08\u307F\u3002',
+    'dlg-msg-check':     '\u3053\u308C\u3092\u30C1\u30A7\u30C3\u30AF\u3057\u3066\u307F\u3066\u3002',
+    'dlg-msg-none':      '\u3053\u306E\u30C8\u30E9\u30C3\u30AF\u306F\u307E\u3060\u672A\u767A\u8868\u3067\u3059\u3002',
+    'dlg-id':            'ID\uFF1A',
+    'dlg-message':       '\u30E1\u30C3\u30BB\u30FC\u30B8\uFF1A',              /* メッセージ： */
+    'dlg-listen':        '\u8074\u304F\uFF1A',                                 /* 聴く： */
+    'dlg-no-links':      '\uFF08\u30EA\u30F3\u30AF\u672A\u767B\u9332\uFF09', /* （リンク未登録） */
+    'dlg-close':         '[ \u9589\u3058\u308B ]',                              /* 閉じる */
+    'dlg-nag-intro':     'Instagram\u3067',
+    'dlg-nag-link':      '\u6587\u53E5',                                       /* 文句 */
+    'dlg-nag-outro':     '\u3092\u304A\u9858\u3044\u3057\u307E\u3059\u3002',
     'm-signal': '信号',
     'm-decoder': '発信局',
     'm-status': '状態',
@@ -1900,10 +1949,11 @@ function applyStatusValue(v) {
 }
 function applyAccessValue(v) {
   mAccess.textContent = v;
-  mAccess.classList.remove('access-none', 'access-granted', 'tap');
+  mAccess.classList.remove('access-none', 'access-granted', 'access-check', 'tap');
   const lc = String(v).toLowerCase();
-  if (lc === 'granted') mAccess.classList.add('access-granted', 'tap');
-  else mAccess.classList.add('access-none', 'tap');
+  if (lc === 'granted')    mAccess.classList.add('access-granted', 'tap');
+  else if (lc === 'check') mAccess.classList.add('access-check', 'tap');
+  else                     mAccess.classList.add('access-none', 'tap');
 }
 function applyVibeValue(v) {
   const raw = String(v || '').trim();
@@ -2256,18 +2306,25 @@ const LinksRegistry = {
     for (const block of blocks) {
       const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
       let id = null;
+      let message = null;
       const links = [];
       for (const line of lines) {
         if (line.startsWith('#')) continue;
         if (/^id\s*=/i.test(line)) {
           id = line.split('=').slice(1).join('=').trim();
+        } else if (/^message\s*=/i.test(line)) {
+          // message=0 → use default from index.html; message=<text> → override
+          message = line.split('=').slice(1).join('=').trim();
         } else if (/^link\s*=/i.test(line)) {
           const body = line.split('=').slice(1).join('=').trim();
           const parts = body.split('|').map(s => s.trim());
-          if (parts.length >= 2 && parts[1]) links.push({ label: parts[0], url: parts[1] });
+          // "LABEL | 0" means "no link for this service" — skip
+          if (parts.length >= 2 && parts[1] && parts[1] !== '0') {
+            links.push({ label: parts[0], url: parts[1] });
+          }
         }
       }
-      if (id) this.map[id] = links;
+      if (id) this.map[id] = { links, message };
     }
   },
   // derive a track ID from the first audio filename: strip "-normal.mp3", "-high.wav", "-off.mp3"
@@ -2277,10 +2334,11 @@ const LinksRegistry = {
     const firstFile = (t.files && t.files[0]) || t.meta.offline_file || '';
     return firstFile.replace(/-(?:normal|high|off)\.(?:mp3|wav)$/i, '') || null;
   },
-  linksForTrack(idx) {
+  entryForTrack(idx) {
     const id = this.idForTrack(idx);
-    return (id && this.map[id]) || [];
-  }
+    return (id && this.map[id]) || { links: [], message: null };
+  },
+  linksForTrack(idx) { return this.entryForTrack(idx).links; }
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -2320,20 +2378,32 @@ function openConfirm(url) {
 }
 
 function openAccessDialog(idx) {
-  const axLc = String(Registry.metaFor(idx, 'access') || '').toLowerCase();
+  const axLc = String(liveMeta(idx, 'access') || '').toLowerCase();
   infoBodyEl.innerHTML = '';
   infoActionsEl.innerHTML = '';
 
-  if (axLc === 'granted') {
-    // ── access=granted: show track ID + streaming links ──
-    const signal = Registry.metaFor(idx, 'signal') || '---';
-    const links = LinksRegistry.linksForTrack(idx);
-    infoTitleEl.textContent = 'TRACK RELEASED';
+  if (axLc === 'granted' || axLc === 'check') {
+    // ── granted + check share the same dialog structure (links + ID) ──
+    // differ only in title + default message; per-track message override from track-links.dat wins
+    const signal = liveMeta(idx, 'signal') || '---';
+    const entry = LinksRegistry.entryForTrack(idx);
+    const links = entry.links;
+    const msgOverride = entry.message;
+
+    const defaultMsg = (axLc === 'check') ? t('dlg-msg-check') : t('dlg-msg-granted');
+    const title = (axLc === 'check') ? t('dlg-title-check') : t('dlg-title-granted');
+    // "message=0" (or empty / missing) → use default from index.html i18n; anything else → override
+    const bodyMsg = (!msgOverride || msgOverride === '0') ? defaultMsg : msgOverride;
+
+    infoTitleEl.textContent = title;
     const frag = document.createDocumentFragment();
-    const l1 = document.createElement('div'); l1.textContent = 'This track is released!'; frag.appendChild(l1);
-    const idLine = document.createElement('div'); idLine.className = 'id-line'; idLine.textContent = 'ID:'; frag.appendChild(idLine);
-    const title = document.createElement('div'); title.className = 'track-title'; title.textContent = signal; frag.appendChild(title);
-    const listen = document.createElement('div'); listen.className = 'id-line'; listen.textContent = 'Listen on:'; frag.appendChild(listen);
+    // order: ID → title → MESSAGE → body → LISTEN ON → links
+    const idLine = document.createElement('div'); idLine.className = 'id-line'; idLine.textContent = t('dlg-id'); frag.appendChild(idLine);
+    const titleEl = document.createElement('div'); titleEl.className = 'track-title'; titleEl.textContent = signal; frag.appendChild(titleEl);
+    const msgLabel = document.createElement('div'); msgLabel.className = 'id-line'; msgLabel.textContent = t('dlg-message'); frag.appendChild(msgLabel);
+    // bodyMsg may contain HTML (e.g. <b>, &nbsp;) authored in track-links.dat — render as HTML
+    const msgBody = document.createElement('div'); msgBody.className = 'msg-body'; msgBody.innerHTML = bodyMsg; frag.appendChild(msgBody);
+    const listen = document.createElement('div'); listen.className = 'id-line'; listen.textContent = t('dlg-listen'); frag.appendChild(listen);
     if (links.length) {
       const list = document.createElement('div'); list.className = 'link-list';
       for (const ln of links) {
@@ -2348,21 +2418,23 @@ function openAccessDialog(idx) {
       frag.appendChild(list);
     } else {
       const none = document.createElement('div'); none.style.opacity = '0.6';
-      none.textContent = '(no links on file yet)';
+      none.textContent = t('dlg-no-links');
       frag.appendChild(none);
     }
     infoBodyEl.appendChild(frag);
 
     const close = document.createElement('button');
-    close.className = 'ibtn ibtn--primary'; close.textContent = '[ CLOSE ]';
+    close.className = 'ibtn ibtn--primary'; close.textContent = t('dlg-close');
     close.onclick = closeInfoDialog;
     infoActionsEl.appendChild(close);
   } else {
-    // ── access=none (or anything not 'granted'): "nag us" prompt ──
-    infoTitleEl.textContent = 'TRACK NOT YET RELEASED';
+    // ── access=none (or anything unknown): "nag us" prompt ──
+    infoTitleEl.textContent = t('dlg-title-none');
     infoBodyEl.innerHTML =
-      'This track is not yet released.<br>You can ' +
-      '<a href="' + IG_NAG_URL + '" id="nagUsLink">nag us</a> on Instagram.';
+      escapeHtml(t('dlg-msg-none')) + '<br>' +
+      escapeHtml(t('dlg-nag-intro')) + ' ' +
+      '<a href="' + IG_NAG_URL + '" id="nagUsLink">' + escapeHtml(t('dlg-nag-link')) + '</a> ' +
+      escapeHtml(t('dlg-nag-outro'));
 
     const awOk = document.createElement('button');
     awOk.className = 'ibtn ibtn--primary';
@@ -2378,6 +2450,11 @@ function openAccessDialog(idx) {
   }
 
   infoOverlay.classList.add('open');
+}
+
+// minimal HTML-escape for text going into innerHTML via translation strings
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
 // access value click/tap
