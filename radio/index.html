@@ -508,6 +508,32 @@
     box-shadow: none;
   }
 
+  /* ── print overlay — timed on-screen messages from signal.dat timeline ── */
+  .print-overlay {
+    position: fixed; inset: 0; z-index: 350;
+    display: flex; align-items: flex-start; justify-content: center;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .print-overlay.show { opacity: 1; }
+  .print-overlay .print-box {
+    margin-top: 22vh;    /* upper third — sits above the mid-left track-card */
+    max-width: 82vw;
+    padding: 16px 26px;
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--accent-dim);
+    border-left: 3px solid var(--accent);
+    color: var(--fg);
+    font-size: 18px; letter-spacing: 1px; line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6), 4px 4px 0 var(--accent-dim);
+  }
+  @media (max-width: 520px) {
+    .print-overlay .print-box { font-size: 15px; padding: 12px 18px; max-width: 90vw; margin-top: 15vh; }
+  }
+
   /* ── toast ── */
   .toast {
     position: fixed; top: 54px; left: 50%;
@@ -784,6 +810,11 @@
 <!-- toast -->
 <div class="toast" id="toast"></div>
 
+<!-- print overlay (centered, upper-third — fires on timeline 'print' events) -->
+<div class="print-overlay" id="printOverlay" aria-hidden="true">
+  <div class="print-box" id="printBox"></div>
+</div>
+
 <!-- tuner control strip -->
 <div class="tuner">
   <!-- streaming-rate display (replaces the FM frequency readout) -->
@@ -1021,17 +1052,45 @@ function parseSignalDat(text) {
     const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     const files = [];
     const meta = {};
+    const timeline = [];   // [{ time, type, value, duration? }], sorted by time asc
     for (const line of lines) {
+      if (line.startsWith('#')) continue;                 // comment
       if (/^File\s*:/i.test(line)) {
         const f = line.replace(/^File\s*:/i, '').trim();
         if (f) files.push(f);
+        continue;
+      }
+      const eq = line.indexOf('=');
+      if (eq <= 0) continue;
+      const key = line.slice(0, eq).trim();
+      const value = line.slice(eq + 1).trim();
+      // timed key?  e.g. signal(sec96) or print(sec103)
+      const m = key.match(/^([a-zA-Z_][\w-]*)\(sec(\d+(?:\.\d+)?)\)$/);
+      if (m) {
+        const field = m[1].toLowerCase();
+        const time = parseFloat(m[2]);
+        if (field === 'print') {
+          // value format:  "text" or "text; d=3" / "text; d=3sec"
+          const parts = value.split(/\s*;\s*/);
+          const txt = parts[0];
+          const params = {};
+          for (let i = 1; i < parts.length; i++) {
+            const pEq = parts[i].indexOf('=');
+            if (pEq > 0) params[parts[i].slice(0, pEq).trim().toLowerCase()] = parts[i].slice(pEq + 1).trim();
+          }
+          const dRaw = params.d || '3';
+          const duration = parseFloat(String(dRaw).replace(/sec$/i, '')) || 3;
+          timeline.push({ time, type: 'print', text: txt, duration });
+        } else {
+          timeline.push({ time, type: field, value });
+        }
       } else {
-        const eq = line.indexOf('=');
-        if (eq > 0) meta[line.slice(0, eq).trim()] = line.slice(eq + 1).trim();
+        meta[key] = value;
       }
     }
-    if (files.length || meta.offline_file) {
-      tracks.push({ files, meta });
+    timeline.sort((a, b) => a.time - b.time);
+    if (files.length || meta.offline_file || timeline.length) {
+      tracks.push({ files, meta, timeline });
     }
   }
   return tracks;
@@ -1664,12 +1723,13 @@ const TrackCycler = {
   },
   paint() {
     if (this.idx < 0) { trackNameCycler.textContent = '--'; return; }
+    // liveMeta() returns the timeline-override value if any event has fired
     if (this.state === 'origin') {
-      const origin = Registry.metaFor(this.idx, 'origin') || '---';
+      const origin = liveMeta(this.idx, 'origin') || '---';
       trackNameCycler.textContent = 'ORIGIN: ' + origin;
     } else {
-      const sig = Registry.metaFor(this.idx, 'signal') || '---';
-      const dec = Registry.metaFor(this.idx, 'decoder') || '---';
+      const sig = liveMeta(this.idx, 'signal') || '---';
+      const dec = liveMeta(this.idx, 'decoder') || '---';
       trackNameCycler.textContent = 'TRACK: ' + sig + ' | ' + dec;
     }
   }
@@ -1692,6 +1752,13 @@ tuningBar.addEventListener('click', e => {
   const rect = tuningBar.getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   engine.seek(pct);
+  // re-apply/skip timeline events for the new position (no replay of old prints)
+  if (Registry.currentIdx >= 0) {
+    // hydrate overrides up to the new time, without flashing past print events
+    // (applyMeta resets LiveState, then catchUpTo applies all non-print events ≤ newTime)
+    // We only partially reset — keep currentIdx bindings but re-walk timeline.
+    applyMeta(Registry.currentIdx);
+  }
 });
 
 // ── hamburger menu ──
@@ -1748,6 +1815,147 @@ qbtnHighfi.addEventListener('click', async () => {
 });
 setQuality(Registry.quality);
 
+// ══════════════════════════════════════════════════════════════════
+// LIVE STATE + TIMELINE RUNNER
+// ──────────────────────────────────────────────────────────────────
+// A track's metadata can mutate over playback via timeline events from
+// signal.dat (FIELD(secN)=value). LiveState holds those overrides; once
+// a timeline event fires its value wins over the base metaFor() lookup.
+// Reset on every track load / crossfade.
+// ══════════════════════════════════════════════════════════════════
+const LiveState = {
+  overrides: Object.create(null),   // { signal: '...', origin: '...', ... }
+  reset() { this.overrides = Object.create(null); },
+  set(field, value) { this.overrides[field] = value; },
+  get(field) { return this.overrides[field]; }
+};
+
+// unified metadata reader — timeline override wins over base
+function liveMeta(idx, key) {
+  const override = LiveState.get(key);
+  if (override != null) return override;
+  return Registry.metaFor(idx, key) || '';
+}
+
+const TimelineRunner = {
+  idx: -1,
+  nextEventIdx: 0,
+  reset(idx) {
+    this.idx = idx;
+    this.nextEventIdx = 0;
+    LiveState.reset();
+    hidePrintOverlay();
+    // if we're starting mid-track (e.g. after a seek), catch up silently
+    this.catchUpTo(engine.currentTime);
+  },
+  tick(currentTime) {
+    const t = Registry.tracks[this.idx];
+    if (!t || !t.timeline || this.nextEventIdx >= t.timeline.length) return;
+    while (this.nextEventIdx < t.timeline.length && t.timeline[this.nextEventIdx].time <= currentTime) {
+      applyTimelineEvent(t.timeline[this.nextEventIdx]);
+      this.nextEventIdx++;
+    }
+  },
+  catchUpTo(currentTime) {
+    // like tick(), but SKIPS print events (they're one-shot UI; don't flash old ones on seek)
+    const t = Registry.tracks[this.idx];
+    if (!t || !t.timeline) { this.nextEventIdx = 0; return; }
+    this.nextEventIdx = 0;
+    while (this.nextEventIdx < t.timeline.length && t.timeline[this.nextEventIdx].time <= currentTime) {
+      const ev = t.timeline[this.nextEventIdx];
+      if (ev.type !== 'print') applyTimelineEvent(ev);
+      this.nextEventIdx++;
+    }
+  }
+};
+
+function applyTimelineEvent(ev) {
+  if (ev.type === 'print') {
+    showPrintOverlay(ev.text, ev.duration);
+    return;
+  }
+  // metadata mutation — set override + sync the visible DOM / cycler
+  LiveState.set(ev.type, ev.value);
+  switch (ev.type) {
+    case 'signal':  $('m-signal').textContent  = ev.value; break;
+    case 'decoder': $('m-decoder').textContent = ev.value; break;
+    case 'status':  applyStatusValue(ev.value); break;
+    case 'access':  applyAccessValue(ev.value); break;
+    case 'vibe':    applyVibeValue(ev.value); break;
+    // origin isn't rendered in the card — cycler reads via liveMeta()
+    // so no DOM update needed here.
+  }
+  // refresh cycler in case signal/decoder/origin changed
+  if (typeof TrackCycler !== 'undefined' && TrackCycler.paint) TrackCycler.paint();
+}
+
+// helpers used by both applyMeta() (initial) and applyTimelineEvent() (mutations)
+function applyStatusValue(v) {
+  const el = $('m-status');
+  el.textContent = v;
+  el.classList.remove('status-bad', 'status-good');
+  const lc = String(v).toLowerCase();
+  if (lc === 'noncompiled' || lc === 'unknown' || lc === 'unreleased') el.classList.add('status-bad');
+  else if (lc === 'released' || lc === 'public') el.classList.add('status-good');
+}
+function applyAccessValue(v) {
+  mAccess.textContent = v;
+  mAccess.classList.remove('access-none', 'access-granted', 'tap');
+  const lc = String(v).toLowerCase();
+  if (lc === 'granted') mAccess.classList.add('access-granted', 'tap');
+  else mAccess.classList.add('access-none', 'tap');
+}
+function applyVibeValue(v) {
+  const raw = String(v || '').trim();
+  if (!raw || raw === '0') {
+    vibeBlock.classList.add('hidden');
+    vibeValue.textContent = '';
+  } else {
+    vibeBlock.classList.remove('hidden');
+    vibeValue.textContent = raw;
+  }
+}
+
+// print overlay — shown centered-upper for N seconds then fades out
+let _printTimer = null;
+function showPrintOverlay(text, durationSec) {
+  const ov = $('printOverlay'); const box = $('printBox');
+  if (!ov || !box) return;
+  box.textContent = text;
+  ov.classList.add('show');
+  if (_printTimer) clearTimeout(_printTimer);
+  _printTimer = setTimeout(() => ov.classList.remove('show'), Math.max(0.5, durationSec) * 1000);
+}
+function hidePrintOverlay() {
+  const ov = $('printOverlay');
+  if (ov) ov.classList.remove('show');
+  if (_printTimer) { clearTimeout(_printTimer); _printTimer = null; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// QUALITY BUTTON AVAILABILITY
+// ──────────────────────────────────────────────────────────────────
+// - cfded tier (playing *-off.mp3):  BOTH disabled (only one file exists)
+// - online/local without a .wav:      HI-FI disabled, NORMAL enabled
+// - online/local with both formats:   both enabled
+// ══════════════════════════════════════════════════════════════════
+function updateQualityAvailability() {
+  if (!Registry.source) return;
+  const t = Registry.tracks[Registry.currentIdx];
+  const isOffline = !!Registry.source.offline;
+  if (isOffline) {
+    qbtnNormal.disabled = true;  qbtnNormal.title = 'Emergency fallback — single quality only';
+    qbtnHighfi.disabled = true;  qbtnHighfi.title = 'Emergency fallback — single quality only';
+    return;
+  }
+  const hasNormal = !!(t && t.files && t.files.some(f => /\.mp3$/i.test(f)));
+  const hasHighfi = !!(t && t.files && t.files.some(f => /\.wav$/i.test(f)));
+  qbtnNormal.disabled = !hasNormal;
+  qbtnNormal.title = hasNormal ? 'Recalibrate signal to NORMAL' : 'No NORMAL file available';
+  qbtnHighfi.disabled = !hasHighfi;
+  qbtnHighfi.title = hasHighfi ? 'Recalibrate signal to HI-FI' : 'No HI-FI file for this track';
+}
+
 // ── empty state: no track yet → hide all rows except Signal, show "(press SCAN)" ──
 function applyEmptyCard() {
   trackCard.classList.add('card-empty');
@@ -1770,47 +1978,23 @@ function applyMeta(idx) {
   if (typeof updateCollapseLabel === 'function') updateCollapseLabel();
   // PLAY becomes usable once a track has been loaded
   btnPlay.disabled = false;
-  const sigV = Registry.metaFor(idx, 'signal') || '---';
-  const decV = Registry.metaFor(idx, 'decoder') || '---';
-  const stV  = Registry.metaFor(idx, 'status')  || '---';
-  const axV  = Registry.metaFor(idx, 'access')  || '---';
-  const orV  = Registry.metaFor(idx, 'origin')  || '---';
 
-  const mSignal = $('m-signal'), mDecoder = $('m-decoder'), mStatus = $('m-status');
-  mSignal.textContent = sigV;
-  mDecoder.textContent = decV;
-  mStatus.textContent = stV;
-  mAccess.textContent = axV;
-  $('m-origin').textContent = orV;
+  // base metadata (timeline events may override later)
+  $('m-signal').textContent  = Registry.metaFor(idx, 'signal')  || '---';
+  $('m-decoder').textContent = Registry.metaFor(idx, 'decoder') || '---';
+  applyStatusValue(Registry.metaFor(idx, 'status') || '---');
+  applyAccessValue(Registry.metaFor(idx, 'access') || '---');
+  $('m-origin').textContent  = Registry.metaFor(idx, 'origin')  || '---';
+  applyVibeValue(Registry.metaFor(idx, 'vibe'));
 
-  // status colouring
-  mStatus.classList.remove('status-bad', 'status-good');
-  const stLc = String(stV).toLowerCase();
-  if (stLc === 'noncompiled' || stLc === 'unknown' || stLc === 'unreleased') mStatus.classList.add('status-bad');
-  else if (stLc === 'released' || stLc === 'public') mStatus.classList.add('status-good');
+  // reset per-track runtime state + catch up timeline to current position
+  TimelineRunner.reset(idx);
 
-  // access colouring + tappability gate
-  mAccess.classList.remove('access-none', 'access-granted', 'tap');
-  const axLc = String(axV).toLowerCase();
-  if (axLc === 'granted') mAccess.classList.add('access-granted', 'tap');
-  else mAccess.classList.add('access-none', 'tap');   // any non-granted value → "none" behaviour
-
-  // VIBE: read from meta, hide on empty/"0", show otherwise
-  updateVibe(idx);
+  // quality buttons reflect file availability for THIS track
+  updateQualityAvailability();
 
   // cycler reset
   TrackCycler.start(idx);
-}
-
-function updateVibe(idx) {
-  const raw = (Registry.metaFor(idx, 'vibe') || '').trim();
-  if (!raw || raw === '0') {
-    vibeBlock.classList.add('hidden');
-    vibeValue.textContent = '';
-  } else {
-    vibeBlock.classList.remove('hidden');
-    vibeValue.textContent = raw;
-  }
 }
 
 async function reloadCurrent() {
@@ -1828,6 +2012,8 @@ async function reloadCurrent() {
     }
     if (wasPlaying) engine._startAt(Math.min(offset, engine.duration - 0.1), 0);
     updatePlayBtn();
+    // rebuild LiveState + timeline cursor for the current offset (no print replay)
+    TimelineRunner.reset(Registry.currentIdx);
   } catch (e) { toast(t('failed')); StreamRate.bad(); }
 }
 
@@ -1983,6 +2169,9 @@ function loop() {
   if (bpmDetector.bpm > 0) bpmVal.textContent = bpmDetector.bpm;
   if (keyDetector && keyDetector.key) keyVal.textContent = keyDetector.key;
 
+  // fire any timeline events whose time has been crossed this frame
+  if (engine.playing) TimelineRunner.tick(engine.currentTime);
+
   updateSignalBars(freq);
   updateDbReadout(freq);
 }
@@ -2017,12 +2206,9 @@ function updateDbReadout(freq) {
 
   await Registry.init();
 
-  // hi-fi quality only meaningful on tiers that carry both MP3 + WAV (online + local).
-  // Offline-flagged tiers (cfded) have a single low-quality file — disable hi-fi.
-  if (Registry.source && Registry.source.offline) {
-    qbtnHighfi.disabled = true;
-    qbtnHighfi.title = 'Emergency fallback — single quality';
-  }
+  // quality buttons respect tier + per-track file availability
+  // (cfded → both disabled; online/local → HI-FI disabled if no .wav for this track)
+  updateQualityAvailability();
 
   // (tier indicator removed — streaming-rate colour + VIBE carry the signal story now)
 
