@@ -1772,14 +1772,15 @@ const TrackCycler = {
   },
   paint() {
     if (this.idx < 0) { trackNameCycler.textContent = '--'; return; }
-    // liveMeta() returns the timeline-override value if any event has fired
+    // liveMeta() returns the timeline-override value if any event has fired;
+    // localizeBrands() swaps TD / RE/IMAGINED to the active lang where applicable
     if (this.state === 'origin') {
       const origin = liveMeta(this.idx, 'origin') || '---';
-      trackNameCycler.textContent = 'ORIGIN: ' + origin;
+      trackNameCycler.textContent = localizeBrands('ORIGIN: ' + origin);
     } else {
       const sig = liveMeta(this.idx, 'signal') || '---';
       const dec = liveMeta(this.idx, 'decoder') || '---';
-      trackNameCycler.textContent = 'TRACK: ' + sig + ' | ' + dec;
+      trackNameCycler.textContent = localizeBrands('TRACK: ' + sig + ' | ' + dec);
     }
   }
 };
@@ -1886,6 +1887,25 @@ function liveMeta(idx, key) {
   return Registry.metaFor(idx, key) || '';
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Brand aliases — substring replacements applied at display time only.
+// Applied to anything user-facing containing a brand (decoder / the cycler
+// combined line / origin). Written as regex so it also hits composite
+// values like "TWISTED DUALITY x MADEON x Porter Robinson".
+// ──────────────────────────────────────────────────────────────────
+function localizeBrands(text) {
+  if (!text) return text;
+  const lang = document.documentElement.lang || 'en';
+  if (lang === 'ja') {
+    text = text.replace(/TWISTED\s+DUALITY/g, '\u53CC\u6975\u306E\u87BA\u65CB');     // 双極の螺旋
+    text = text.replace(/RE\/IMAGINED/g, '\u30B5\u30A4\u30B3\u30A6\u30C1\u30AF');      // サイコウチク
+  } else if (lang === 'de') {
+    text = text.replace(/RE\/IMAGINED/g, 'RE/KONSTRUKT');
+    // TWISTED DUALITY intentionally unchanged in DE (user said "others use as-is")
+  }
+  return text;
+}
+
 const TimelineRunner = {
   idx: -1,
   nextEventIdx: 0,
@@ -1927,7 +1947,7 @@ function applyTimelineEvent(ev) {
   LiveState.set(ev.type, ev.value);
   switch (ev.type) {
     case 'signal':  $('m-signal').textContent  = ev.value; break;
-    case 'decoder': $('m-decoder').textContent = ev.value; break;
+    case 'decoder': $('m-decoder').textContent = localizeBrands(ev.value); break;
     case 'status':  applyStatusValue(ev.value); break;
     case 'access':  applyAccessValue(ev.value); break;
     case 'vibe':    applyVibeValue(ev.value); break;
@@ -2031,7 +2051,7 @@ function applyMeta(idx) {
 
   // base metadata (timeline events may override later)
   $('m-signal').textContent  = Registry.metaFor(idx, 'signal')  || '---';
-  $('m-decoder').textContent = Registry.metaFor(idx, 'decoder') || '---';
+  $('m-decoder').textContent = localizeBrands(Registry.metaFor(idx, 'decoder') || '---');
   applyStatusValue(Registry.metaFor(idx, 'status') || '---');
   applyAccessValue(Registry.metaFor(idx, 'access') || '---');
   $('m-origin').textContent  = Registry.metaFor(idx, 'origin')  || '---';
@@ -2589,7 +2609,8 @@ cardCollapseBtn.addEventListener('click', e => {
 updateCollapseLabel();
 
 // re-run unit/empty-state refresh on language change so Kbps/Kb/s/Kb/秒
-// and "(press SCAN)" stay in sync with the active lang
+// and "(press SCAN)" stay in sync with the active lang — also re-localize
+// decoder + cycler (TWISTED DUALITY → 双極の螺旋 etc.)
 (function wrapApplyLangUnits() {
   if (typeof applyLang !== 'function') return;
   const orig = applyLang;
@@ -2598,6 +2619,10 @@ updateCollapseLabel();
     StreamRate.render();
     if (trackCard.classList.contains('card-empty')) {
       document.getElementById('m-signal').textContent = t('press-scan');
+    } else if (Registry.currentIdx >= 0) {
+      // re-render decoder (brand aliases) + cycler
+      document.getElementById('m-decoder').textContent = localizeBrands(liveMeta(Registry.currentIdx, 'decoder') || '---');
+      if (typeof TrackCycler !== 'undefined' && TrackCycler.paint) TrackCycler.paint();
     }
   };
 })();
