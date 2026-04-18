@@ -814,6 +814,12 @@
   <div class="sub"><span data-i18n="constructed-by">Constructed by</span> <a href="https://www.instagram.com/wyred.on/" target="_blank" rel="noopener">@wyred.on</a></div>
 </div>
 
+<!-- hidden <audio> backing element.
+     Fed with a blob URL derived from the fetched arraybuffer, so the real R2
+     URL is never exposed. Lets mobile browsers keep playback alive in the
+     background and gives us lock-screen controls via MediaSession API. -->
+<audio id="audioEl" preload="auto" playsinline style="display:none"></audio>
+
 <!-- toast -->
 <div class="toast" id="toast"></div>
 
@@ -1226,14 +1232,12 @@ class AudioEngine {
     this.masterGain = null;
     this.trackGain = null;
     this.noiseGain = null;
-    this.source = null;
+    this.mediaEl = null;       // HTMLAudioElement, backs real playback
+    this.mediaSource = null;   // MediaElementAudioSourceNode (created once)
     this.noiseSource = null;
-    this.buffer = null;
+    this.blobUrl = null;       // current blob: URL assigned to mediaEl.src
     this.freqData = null;
-    this.playing = false;
-    this.startTime = 0;       // ctx time when current source started
-    this.pausedAt = 0;        // offset within buffer when paused
-    this.loadCounter = 0;     // increments on each load, used to ignore stale decodes
+    this.loadCounter = 0;      // increments on each load, used to ignore stale decodes
   }
 
   init() {
@@ -1245,13 +1249,37 @@ class AudioEngine {
     this.masterGain = this.ctx.createGain();
     this.trackGain = this.ctx.createGain();
     this.noiseGain = this.ctx.createGain();
+    this.trackGain.gain.value = 1;
     this.noiseGain.gain.value = 0;
 
-    // chain: [source/noise] → trackGain/noiseGain → analyser → masterGain → destination
     this.trackGain.connect(this.analyser);
     this.noiseGain.connect(this.analyser);
     this.analyser.connect(this.masterGain);
     this.masterGain.connect(this.ctx.destination);
+
+    // Hook the <audio> element into the graph.
+    // MediaElementSource can only be created ONCE per element — we keep it
+    // for the life of the page. Swapping tracks is done via mediaEl.src.
+    this.mediaEl = document.getElementById('audioEl');
+    if (!this.mediaEl) {
+      this.mediaEl = document.createElement('audio');
+      this.mediaEl.id = 'audioEl';
+      this.mediaEl.preload = 'auto';
+      this.mediaEl.playsInline = true;
+      this.mediaEl.style.display = 'none';
+      document.body.appendChild(this.mediaEl);
+    }
+    this.mediaSource = this.ctx.createMediaElementSource(this.mediaEl);
+    this.mediaSource.connect(this.trackGain);
+
+    // natural end → auto-advance (pause + manual stop DON'T fire 'ended')
+    this.mediaEl.addEventListener('ended', () => {
+      if (typeof onTrackFullyPlayed === 'function') onTrackFullyPlayed();
+    });
+    // keep UI in sync if the media element pauses on its own (e.g. lock-screen controls)
+    this.mediaEl.addEventListener('pause',    () => updatePlayBtn());
+    this.mediaEl.addEventListener('play',     () => updatePlayBtn());
+    this.mediaEl.addEventListener('playing',  () => updatePlayBtn());
 
     this.freqData = new Uint8Array(this.analyser.frequencyBinCount);
   }
@@ -1263,17 +1291,14 @@ class AudioEngine {
   async loadUrl(url, onProgress) {
     this.init();
     const id = ++this.loadCounter;
-    // fetch as arraybuffer via reader so we can report progress.
-    // Using fetch() + reader (not a media element) also keeps the URL
-    // off IDM's hook list — downloads can't latch onto a hidden <audio>.
-    // cache: 'default' lets the HTTP cache keep the track between reloads
-    // for faster subsequent plays.
+    // Still fetch → buffer ourselves so we can (a) report progress, (b) keep
+    // the actual R2 URL out of <audio>'s src attribute (replaced with a blob:)
     const res = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'default' });
     if (!res.ok) throw new Error('fetch failed: ' + res.status);
     const total = parseInt(res.headers.get('content-length') || '0', 10);
+    const contentType = res.headers.get('content-type') || 'audio/mpeg';
     const reader = res.body && res.body.getReader ? res.body.getReader() : null;
-    let ab;
-    let loaded = 0;
+    let blob; let loaded = 0;
     if (reader) {
       const chunks = [];
       while (true) {
@@ -1283,38 +1308,49 @@ class AudioEngine {
         loaded += value.length;
         if (onProgress) onProgress(total ? Math.min(1, loaded / total) : 0, loaded);
       }
-      ab = await new Blob(chunks).arrayBuffer();
+      blob = new Blob(chunks, { type: contentType });
     } else {
-      // fallback: no streaming API available
-      ab = await res.arrayBuffer();
-      loaded = ab.byteLength;
+      blob = await res.blob();
+      loaded = blob.size;
       if (onProgress) onProgress(1, loaded);
     }
     if (id !== this.loadCounter) return null;  // superseded by later load
-    const buf = await this.ctx.decodeAudioData(ab);
+
+    // pause the element before swapping src (iOS quirk: playing element
+    // getting src replaced can throw / glitch)
+    try { this.mediaEl.pause(); } catch (_) {}
+    // revoke any previous blob URL first
+    if (this.blobUrl) { try { URL.revokeObjectURL(this.blobUrl); } catch (_) {} this.blobUrl = null; }
+    this.blobUrl = URL.createObjectURL(blob);
+    this.mediaEl.src = this.blobUrl;
+
+    // wait for metadata (duration becomes available). If the load races
+    // (superseded), the next loadUrl will replace src and reject this.
+    await new Promise((resolve, reject) => {
+      const onMeta = () => { cleanup(); resolve(); };
+      const onErr  = () => { cleanup(); reject(new Error('audio load error')); };
+      const cleanup = () => {
+        this.mediaEl.removeEventListener('loadedmetadata', onMeta);
+        this.mediaEl.removeEventListener('error', onErr);
+      };
+      this.mediaEl.addEventListener('loadedmetadata', onMeta, { once: true });
+      this.mediaEl.addEventListener('error', onErr, { once: true });
+      try { this.mediaEl.load(); } catch (_) {}
+    });
     if (id !== this.loadCounter) return null;
-    this.stopCurrent();
-    this.buffer = buf;
-    this.pausedAt = 0;
     if (onProgress) onProgress(1, loaded);
-    return { buffer: buf, bytes: loaded };
+    // return shape matches the old AudioBuffer result so callers still compute kbps
+    return { buffer: { duration: this.mediaEl.duration }, bytes: loaded };
   }
 
+  // kept for API compatibility — equivalent to a pause()
   stopCurrent() {
-    if (this.source) {
-      try { this.source.onended = null; this.source.stop(); } catch (_) {}
-      try { this.source.disconnect(); } catch (_) {}
-      this.source = null;
-    }
-    this.playing = false;
+    if (this.mediaEl) { try { this.mediaEl.pause(); } catch (_) {} }
   }
 
   _startAt(offset, fadeIn) {
-    if (!this.buffer) return;
-    this.stopCurrent();
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.buffer;
-    // reset track gain
+    if (!this.mediaEl || !this.mediaEl.src) return;
+    try { this.mediaEl.currentTime = Math.max(0, offset || 0); } catch (_) {}
     this.trackGain.gain.cancelScheduledValues(this.ctx.currentTime);
     if (fadeIn && fadeIn > 0) {
       this.trackGain.gain.setValueAtTime(0, this.ctx.currentTime);
@@ -1322,86 +1358,51 @@ class AudioEngine {
     } else {
       this.trackGain.gain.setValueAtTime(1, this.ctx.currentTime);
     }
-    src.connect(this.trackGain);
-    src.start(0, offset);
-    src.onended = () => {
-      if (this.source === src) {
-        this.playing = false;
-        updatePlayBtn();
-      }
-    };
-    this.source = src;
-    this.startTime = this.ctx.currentTime;
-    this.pausedAt = offset;
-    this.playing = true;
+    this.mediaEl.play().catch(() => {/* user-gesture gating */});
   }
 
   async play() {
     await this.resume();
-    if (!this.buffer) return;
-    if (this.playing) return;
-    this._startAt(this.pausedAt || 0, 0);
+    if (!this.mediaEl || !this.mediaEl.src) return;
+    this.trackGain.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.trackGain.gain.setValueAtTime(1, this.ctx.currentTime);
+    try { await this.mediaEl.play(); } catch (_) {}
   }
 
   pause() {
-    if (!this.playing) return;
-    this.pausedAt = this.currentTime;
-    if (this.pausedAt >= this.duration) this.pausedAt = 0;
-    this.stopCurrent();
+    if (!this.mediaEl) return;
+    try { this.mediaEl.pause(); } catch (_) {}
   }
 
   async seek(pct) {
-    if (!this.buffer) return;
-    const target = Math.max(0, Math.min(this.duration, this.duration * pct));
-    const wasPlaying = this.playing;
-    this.pausedAt = target;
-    this.stopCurrent();
-    if (wasPlaying) this._startAt(target, 0);
+    if (!this.mediaEl || !this.mediaEl.duration) return;
+    try { this.mediaEl.currentTime = this.mediaEl.duration * Math.max(0, Math.min(1, pct)); } catch (_) {}
   }
 
-  // crossfade from a noise source to a freshly-decoded track
-  // noiseSrc + noiseGain are assumed already running
-  crossfadeToTrack(offset, duration) {
-    if (!this.buffer) return;
-    this.stopCurrent();
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.buffer;
+  // crossfade: noise already running — fade it out while bringing track in
+  async crossfadeToTrack(offset, duration) {
+    if (!this.mediaEl || !this.mediaEl.src) return;
+    await this.resume();
+    try { this.mediaEl.currentTime = offset || 0; } catch (_) {}
     this.trackGain.gain.cancelScheduledValues(this.ctx.currentTime);
     this.trackGain.gain.setValueAtTime(0, this.ctx.currentTime);
     this.trackGain.gain.linearRampToValueAtTime(1, this.ctx.currentTime + duration);
-
-    // fade noise out in parallel
     this.noiseGain.gain.cancelScheduledValues(this.ctx.currentTime);
     this.noiseGain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + duration);
-
-    src.connect(this.trackGain);
-    src.start(0, offset);
-    src.onended = () => {
-      if (this.source === src) {
-        this.playing = false;
-        updatePlayBtn();
-      }
-    };
-    this.source = src;
-    this.startTime = this.ctx.currentTime;
-    this.pausedAt = offset;
-    this.playing = true;
-
+    try { await this.mediaEl.play(); } catch (_) {}
     // stop noise a beat after its fade is done
     setTimeout(() => this.stopNoise(), (duration + 0.1) * 1000);
   }
 
-  // ── radio static noise ──
+  // ── radio static noise (stays on Web Audio — in-memory, no background-playback concerns) ──
   startNoise(level) {
     if (!this.ctx) this.init();
     this.stopNoise();
-    // build pink-ish noise (1.5s buffer) with mild bandpass-style shaping
     const sr = this.ctx.sampleRate;
     const len = Math.floor(sr * 1.5);
     const buf = this.ctx.createBuffer(2, len, sr);
     for (let ch = 0; ch < 2; ch++) {
       const d = buf.getChannelData(ch);
-      // simple pink via averaging
       let b0=0,b1=0,b2=0;
       for (let i = 0; i < len; i++) {
         const white = Math.random() * 2 - 1;
@@ -1439,13 +1440,11 @@ class AudioEngine {
     return this.freqData;
   }
 
-  get currentTime() {
-    if (!this.buffer) return 0;
-    if (this.playing) return Math.min(this.duration, this.pausedAt + (this.ctx.currentTime - this.startTime));
-    return this.pausedAt;
-  }
-
-  get duration() { return this.buffer ? this.buffer.duration : 0; }
+  // truthy when a track is loaded — keeps legacy `if (!engine.buffer)` checks working
+  get buffer()      { return this.mediaEl && this.mediaEl.src ? this.mediaEl : null; }
+  get currentTime() { return this.mediaEl ? (this.mediaEl.currentTime || 0) : 0; }
+  get duration()    { return this.mediaEl ? (this.mediaEl.duration    || 0) : 0; }
+  get playing()     { return this.mediaEl ? !this.mediaEl.paused : false; }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -2063,8 +2062,67 @@ function applyMeta(idx) {
   // quality buttons reflect file availability for THIS track
   updateQualityAvailability();
 
+  // lock-screen / system media controls (mobile background playback)
+  applyMediaSession(idx);
+
   // cycler reset
   TrackCycler.start(idx);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// AUTO-ADVANCE — when a track naturally ends, load the next one in order.
+// NOT random (SCAN handles that), NOT repeating (stop at end of list).
+// ══════════════════════════════════════════════════════════════════
+function onTrackFullyPlayed() {
+  updatePlayBtn();
+  const next = Registry.currentIdx + 1;
+  if (next >= 0 && next < Registry.tracks.length) {
+    loadTrack(next, { autoplay: true });
+  }
+  // else: last track — natural stop, nothing more to do
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MEDIASESSION — lock-screen / notification controls + metadata.
+// Works on Chrome Android, Safari iOS, macOS. Lets the user pause
+// from the lock screen and see what's playing.
+// ══════════════════════════════════════════════════════════════════
+function applyMediaSession(idx) {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    // Prefer dedicated WebAudio_* overrides if set in signal.dat — lets the user
+    // give the lock screen a cleaned-up title/artist separate from the visible card
+    // (e.g. card says "Echo Behind (Edit) x ???" but lock screen says "Echo Behind").
+    // Fallback chain:  WebAudio_track  → signal  (localized)
+    //                  WebAudio_artist → decoder (localized)
+    //                  WebAudio_album  → origin
+    const track  = liveMeta(idx, 'WebAudio_track');
+    const artist = liveMeta(idx, 'WebAudio_artist');
+    const album  = liveMeta(idx, 'WebAudio_album');
+    const title  = track  || localizeBrands(liveMeta(idx, 'signal')  || '---');
+    const arts   = artist || localizeBrands(liveMeta(idx, 'decoder') || '');
+    const alb    = album  || liveMeta(idx, 'origin') || '';
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title:  title,
+      artist: arts,
+      album:  alb
+    });
+    navigator.mediaSession.setActionHandler('play',  async () => { await engine.play();  updatePlayBtn(); });
+    navigator.mediaSession.setActionHandler('pause', ()       => { engine.pause();        updatePlayBtn(); });
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      const n = Registry.currentIdx + 1;
+      if (n >= 0 && n < Registry.tracks.length) loadTrack(n, { autoplay: true });
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      const p = Registry.currentIdx - 1;
+      if (p >= 0) loadTrack(p, { autoplay: true });
+    });
+    try {
+      navigator.mediaSession.setActionHandler('seekto', (e) => {
+        if (engine.duration > 0 && e.seekTime != null) engine.seek(e.seekTime / engine.duration);
+      });
+    } catch (_) { /* older browsers: ignore */ }
+  } catch (_) { /* ignore — best-effort */ }
 }
 
 async function reloadCurrent() {
@@ -2207,6 +2265,25 @@ function updateSignalBars(freq) {
 // ANIMATION LOOP
 // ══════════════════════════════════════════════════════════════════
 let _pendingBeat = 0;
+// must be declared BEFORE loop() is first called — the loop calls
+// maybeUpdateMediaPosition() synchronously, which reads _mediaPosT
+let _mediaPosT = 0;
+function maybeUpdateMediaPosition() {
+  const now = performance.now();
+  if (now - _mediaPosT < 500) return;
+  _mediaPosT = now;
+  if (!('mediaSession' in navigator) || !navigator.mediaSession.setPositionState) return;
+  const dur = engine.duration;
+  if (!dur || !isFinite(dur)) return;
+  try {
+    navigator.mediaSession.setPositionState({
+      duration: dur,
+      playbackRate: 1,
+      position: Math.min(dur, Math.max(0, engine.currentTime))
+    });
+    navigator.mediaSession.playbackState = engine.playing ? 'playing' : 'paused';
+  } catch (_) { /* some browsers throw on certain values — safe to ignore */ }
+}
 function loop() {
   requestAnimationFrame(loop);
   const freq = engine.getFrequency();
@@ -2244,6 +2321,9 @@ function loop() {
 
   updateSignalBars(freq);
   updateDbReadout(freq);
+
+  // update MediaSession position-state ~twice per second (lock-screen scrubber)
+  maybeUpdateMediaPosition();
 }
 loop();
 
