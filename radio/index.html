@@ -641,28 +641,41 @@
   .subtitle-line i, .subtitle-line em     { font-style: italic; }
   .subtitle-line u                        { text-decoration: underline; }
 
-  /* debug panel (activated via ?subdbg=1) — modelled after wsi-player's debug */
+  /* debug panel (opened by 5-tap on bar title OR ?subdbg=1) */
   .debug-panel {
     display: none; position: fixed; top: 10px; left: 10px; z-index: 500;
-    background: rgba(0,0,0,0.88); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.45);                          /* see-through — see waveform/card behind */
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,0.08);
     border-left: 2px solid var(--accent);
-    padding: 10px 14px; min-width: 240px; max-height: 85vh; overflow: auto;
+    padding: 10px 14px; width: 250px; max-height: 88vh; overflow: auto;
     color: var(--fg);
     font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
   }
   .debug-panel.open { display: block; }
   .debug-title {
     font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
-    color: var(--accent); margin-bottom: 8px;
+    color: var(--accent); margin-bottom: 4px;
     display: flex; justify-content: space-between; align-items: center;
   }
   .debug-close { cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; }
   .debug-close:hover { color: var(--fg); }
-  .debug-section {
+  /* collapsible sections via <details>/<summary> — click header to toggle */
+  .debug-panel details { margin-top: 8px; }
+  .debug-panel details > summary {
+    cursor: pointer; list-style: none;
     color: var(--muted); font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
-    margin: 10px 0 4px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 4px 2px; border-bottom: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; gap: 6px;
+    user-select: none;
   }
+  .debug-panel details > summary::-webkit-details-marker { display: none; }
+  .debug-panel details > summary::before {
+    content: '▸'; color: var(--accent); transition: transform 0.15s ease; display: inline-block;
+  }
+  .debug-panel details[open] > summary::before { transform: rotate(90deg); }
+  .debug-panel details > summary:hover { color: var(--fg); }
+  .debug-panel details > .debug-body { padding: 4px 0 2px; }
   .debug-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .debug-row > span:first-child {
     min-width: 70px; color: var(--muted); font-size: 9px;
@@ -983,32 +996,58 @@
 <!-- print overlay (centered, upper-third — fires on timeline 'print' events) -->
 <!-- subtitle stack (SRT) — above tuner, max 3 cues, newest at bottom -->
 <div class="subtitle-stack" id="subtitleStack" aria-hidden="true"></div>
-<!-- debug panel (activate with ?subdbg=1) — track-card + subtitle + print tuning -->
+<!-- debug panel — 5-tap on "RADIO RECEIVER" title OR ?subdbg=1 -->
 <div class="debug-panel" id="debugPanel">
   <div class="debug-title">DEBUG <span class="debug-close" id="debugClose">&times;</span></div>
 
-  <div class="debug-section">Track Card</div>
-  <div class="debug-row"><span>Scale</span>    <input type="range" min="0.6"  max="1.6"  step="0.05" value="1"   data-css="--card-scale"      data-fmt="f2"><span class="dv" id="dv---card-scale">1.00</span></div>
-  <div class="debug-row"><span>Offset X</span> <input type="range" min="0"    max="60"   step="1"    value="0"   data-css="--card-offset-x"   data-unit="px"><span class="dv" id="dv---card-offset-x">0</span></div>
-  <div class="debug-row"><span>Offset Y</span> <input type="range" min="-120" max="120"  step="1"    value="0"   data-css="--card-offset-y"   data-unit="px"><span class="dv" id="dv---card-offset-y">0</span></div>
-  <div class="debug-row"><span>Body Max W</span><input type="range" min="30"  max="85"   step="1"    value="60"  data-css="--card-body-max"   data-unit="vw"><span class="dv" id="dv---card-body-max">60</span></div>
-  <div class="debug-row"><span>Font</span>     <input type="range" min="10"   max="20"   step="0.5"  value="14"  data-css="--card-font-size"  data-unit="px"><span class="dv" id="dv---card-font-size">14</span></div>
-  <div class="debug-row"><span>Strip W</span>  <input type="range" min="20"   max="50"   step="1"    value="30"  data-css="--card-strip-w"    data-unit="px"><span class="dv" id="dv---card-strip-w">30</span></div>
+  <details>
+    <summary>Track Card</summary>
+    <div class="debug-body">
+      <div class="debug-row"><span>Scale</span>    <input type="range" min="0.6"  max="1.6"  step="0.05" value="1"   data-css="--card-scale"      data-fmt="f2"><span class="dv" id="dv---card-scale">1.00</span></div>
+      <div class="debug-row"><span>Offset X</span> <input type="range" min="0"    max="60"   step="1"    value="0"   data-css="--card-offset-x"   data-unit="px"><span class="dv" id="dv---card-offset-x">0</span></div>
+      <div class="debug-row"><span>Offset Y</span> <input type="range" min="-120" max="120"  step="1"    value="0"   data-css="--card-offset-y"   data-unit="px"><span class="dv" id="dv---card-offset-y">0</span></div>
+      <div class="debug-row"><span>Body Max W</span><input type="range" min="30"  max="85"   step="1"    value="60"  data-css="--card-body-max"   data-unit="vw"><span class="dv" id="dv---card-body-max">60</span></div>
+      <div class="debug-row"><span>Font</span>     <input type="range" min="10"   max="20"   step="0.5"  value="14"  data-css="--card-font-size"  data-unit="px"><span class="dv" id="dv---card-font-size">14</span></div>
+      <div class="debug-row"><span>Strip W</span>  <input type="range" min="20"   max="50"   step="1"    value="30"  data-css="--card-strip-w"    data-unit="px"><span class="dv" id="dv---card-strip-w">30</span></div>
+    </div>
+  </details>
 
-  <div class="debug-section">Subtitle</div>
-  <div class="debug-row"><span>Size</span>     <input type="range" min="9"    max="24"   step="1"    value="13"  data-js="subSize"><span class="dv" id="dv-subSize">13</span></div>
-  <div class="debug-row"><span>Pad Y</span>    <input type="range" min="2"    max="14"   step="1"    value="5"   data-css="--subtitle-padding-y" data-unit="px"><span class="dv" id="dv---subtitle-padding-y">5</span></div>
-  <div class="debug-row"><span>Pad X</span>    <input type="range" min="4"    max="30"   step="1"    value="12"  data-css="--subtitle-padding-x" data-unit="px"><span class="dv" id="dv---subtitle-padding-x">12</span></div>
-  <div class="debug-row"><span>Width</span>    <input type="range" min="40"   max="100"  step="1"    value="80"  data-css="--subtitle-width"     data-unit="vw"><span class="dv" id="dv---subtitle-width">80</span></div>
-  <div class="debug-row"><span>Gap</span>      <input type="range" min="0"    max="12"   step="1"    value="4"   data-css="--subtitle-gap"       data-unit="px"><span class="dv" id="dv---subtitle-gap">4</span></div>
-  <div class="debug-row"><span>Bottom +</span> <input type="range" min="0"    max="200"  step="2"    value="0"   data-css="--subtitle-extra"     data-unit="px"><span class="dv" id="dv---subtitle-extra">0</span></div>
+  <details>
+    <summary>Subtitle</summary>
+    <div class="debug-body">
+      <div class="debug-row"><span>Size</span>     <input type="range" min="9"    max="24"   step="1"    value="13"  data-js="subSize"><span class="dv" id="dv-subSize">13</span></div>
+      <div class="debug-row"><span>Pad Y</span>    <input type="range" min="2"    max="14"   step="1"    value="5"   data-css="--subtitle-padding-y" data-unit="px"><span class="dv" id="dv---subtitle-padding-y">5</span></div>
+      <div class="debug-row"><span>Pad X</span>    <input type="range" min="4"    max="30"   step="1"    value="12"  data-css="--subtitle-padding-x" data-unit="px"><span class="dv" id="dv---subtitle-padding-x">12</span></div>
+      <div class="debug-row"><span>Width</span>    <input type="range" min="40"   max="100"  step="1"    value="80"  data-css="--subtitle-width"     data-unit="vw"><span class="dv" id="dv---subtitle-width">80</span></div>
+      <div class="debug-row"><span>Gap</span>      <input type="range" min="0"    max="12"   step="1"    value="4"   data-css="--subtitle-gap"       data-unit="px"><span class="dv" id="dv---subtitle-gap">4</span></div>
+      <div class="debug-row"><span>Bottom +</span> <input type="range" min="0"    max="200"  step="2"    value="0"   data-css="--subtitle-extra"     data-unit="px"><span class="dv" id="dv---subtitle-extra">0</span></div>
+      <button class="dbg-btn" id="subDbgToggle" type="button">DEMO SUBTITLES</button>
+    </div>
+  </details>
 
-  <button class="dbg-btn" id="subDbgToggle" type="button">DEMO SUBTITLES</button>
+  <details>
+    <summary>Waveform</summary>
+    <div class="debug-body">
+      <div class="debug-row"><span>Pos X</span>    <input type="range" min="0"    max="100"  step="1"    value="8"   data-cfg="_posX"><span class="dv" id="dv-cfg-_posX">8</span></div>
+      <div class="debug-row"><span>Pos Y</span>    <input type="range" min="30"   max="100"  step="1"    value="91"  data-cfg="_posY"><span class="dv" id="dv-cfg-_posY">91</span></div>
+      <div class="debug-row"><span>Width</span>    <input type="range" min="20"   max="90"   step="1"    value="66"  data-cfg="_width"><span class="dv" id="dv-cfg-_width">66</span></div>
+      <div class="debug-row"><span>Iso Off X</span><input type="range" min="-10"  max="10"   step="0.1"  value="4"   data-cfg="isoOffsetX" data-fmt="f1"><span class="dv" id="dv-cfg-isoOffsetX">4.0</span></div>
+      <div class="debug-row"><span>Iso Off Y</span><input type="range" min="0"    max="10"   step="0.1"  value="3.4" data-cfg="isoOffsetY" data-fmt="f1"><span class="dv" id="dv-cfg-isoOffsetY">3.4</span></div>
+      <div class="debug-row"><span>Height</span>   <input type="range" min="0.2"  max="8"    step="0.1"  value="3.8" data-cfg="heightScale" data-fmt="f1"><span class="dv" id="dv-cfg-heightScale">3.8</span></div>
+      <div class="debug-row"><span>Lines</span>    <input type="range" min="20"   max="160"  step="1"    value="113" data-cfg="terrainLines"><span class="dv" id="dv-cfg-terrainLines">113</span></div>
+      <div class="debug-row"><span>Line W</span>   <input type="range" min="0.1"  max="3"    step="0.1"  value="0.6" data-cfg="lineWidth" data-fmt="f1"><span class="dv" id="dv-cfg-lineWidth">0.6</span></div>
+      <div class="debug-row"><span>Push Rate</span><input type="range" min="1"    max="8"    step="1"    value="3"   data-cfg="pushEvery"><span class="dv" id="dv-cfg-pushEvery">3</span></div>
+    </div>
+  </details>
 
-  <div class="debug-section">Device</div>
-  <div class="debug-info" id="debugInfo">—</div>
-  <button class="dbg-btn" id="dbgCopy" type="button">COPY INFO + SETTINGS</button>
-  <div class="debug-toast" id="dbgToast"></div>
+  <details open>
+    <summary>Device</summary>
+    <div class="debug-body">
+      <div class="debug-info" id="debugInfo">—</div>
+      <button class="dbg-btn" id="dbgCopy" type="button">COPY INFO + SETTINGS</button>
+      <div class="debug-toast" id="dbgToast"></div>
+    </div>
+  </details>
 </div>
 
 <div class="print-overlay" id="printOverlay" aria-hidden="true">
@@ -2961,21 +3000,36 @@ function updateDbReadout(freq) {
   const closeBtn = $('debugClose');
   if (closeBtn) closeBtn.onclick = () => panel.classList.remove('open');
 
-  // Each range either drives a CSS var (data-css) or a named JS behaviour (data-js).
-  // data-unit appends a CSS unit suffix; data-fmt="f2" formats the display value.
+  // Each range may drive:
+  //   data-css   → a CSS variable on :root (suffix data-unit)
+  //   data-cfg   → a key on the global CFG object (waveform tuning)
+  //   data-js    → a named JS behaviour (e.g. subSize)
+  // data-fmt: "f1"=1 decimal, "f2"=2 decimals; default integer/passthrough.
   function bindRange(slider) {
     const cssVar = slider.dataset.css;
+    const cfgKey = slider.dataset.cfg;
     const jsKey  = slider.dataset.js;
     const unit   = slider.dataset.unit || '';
     const fmt    = slider.dataset.fmt  || '';
-    const dvId   = 'dv-' + (cssVar || jsKey);
+    const dvId   = 'dv-' + (cssVar || (cfgKey ? 'cfg-' + cfgKey : jsKey));
     const dv     = document.getElementById(dvId);
-    const format = (n) => (fmt === 'f2' ? n.toFixed(2) : (Number.isInteger(n) ? String(n) : String(n)));
+    const format = (n) => {
+      if (fmt === 'f2') return n.toFixed(2);
+      if (fmt === 'f1') return n.toFixed(1);
+      return Number.isInteger(n) ? String(n) : String(n);
+    };
     const apply = () => {
       const v = parseFloat(slider.value);
       if (dv) dv.textContent = format(v);
-      if (cssVar) {
-        document.documentElement.style.setProperty(cssVar, format(v) + unit);
+      if (cssVar) document.documentElement.style.setProperty(cssVar, format(v) + unit);
+      if (cfgKey && typeof CFG !== 'undefined') {
+        CFG[cfgKey] = v;
+        // terrainLines needs the ring-buffer rebuilt to match
+        if (cfgKey === 'terrainLines' && typeof terrain !== 'undefined' && terrain.buffer) {
+          terrain.buffer = new Float32Array(v * CFG.freqSamples);
+          terrain.beatFlags = new Uint8Array(v);
+          terrain.head = 0;
+        }
       }
       if (jsKey === 'subSize') {
         // print is master; subtitle auto-derives (size-5) via the derived var
@@ -3038,6 +3092,8 @@ function updateDbReadout(freq) {
     const dpr = window.devicePixelRatio || 1;
     const phys = Math.round(screen.width * dpr) + ' × ' + Math.round(screen.height * dpr);
     const orient = matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
+    const tuner = (tunerEl && tunerEl.classList.contains('collapsed')) ? 'COLLAPSED' : 'FULL';
+    const tunerH = tunerEl ? Math.round(tunerEl.getBoundingClientRect().height) : '?';
     return [
       'Device : ' + d.device,
       'Browser: ' + d.browser + (d.ver ? ' ' + d.ver : ''),
@@ -3045,7 +3101,8 @@ function updateDbReadout(freq) {
       'Screen  : ' + sc + ' (phys ' + phys + ')',
       'DPR    : ' + dpr,
       'Orient : ' + orient,
-      'Touch  : ' + (d.touch ? 'yes' : 'no')
+      'Touch  : ' + (d.touch ? 'yes' : 'no'),
+      'Tuner  : ' + tuner + ' (' + tunerH + 'px)'
     ].join('\n');
   }
   const infoEl = $('debugInfo');
@@ -3053,6 +3110,13 @@ function updateDbReadout(freq) {
   refreshInfo();
   window.addEventListener('resize', refreshInfo);
   window.addEventListener('orientationchange', refreshInfo);
+  // react to tuner collapse/expand so the Tuner line updates live
+  if (tunerEl && window.MutationObserver) {
+    new MutationObserver(refreshInfo).observe(tunerEl, { attributes: true, attributeFilter: ['class'] });
+  }
+  if (window.ResizeObserver && tunerEl) {
+    new ResizeObserver(refreshInfo).observe(tunerEl);
+  }
 
   // COPY INFO + SETTINGS — assembles a paste-ready report
   const toast = $('dbgToast');
