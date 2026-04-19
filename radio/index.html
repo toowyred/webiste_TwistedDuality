@@ -2403,9 +2403,13 @@ function perfWatchTick() {
     const rateRatio = wallDeltaS > 0 ? (audioDelta / wallDeltaS) : 1;
 
     if (_perfWatch.rateLog) {
-      console.log('[rate] fps=' + fps.toFixed(1) + '  audioΔ=' + audioDelta.toFixed(3) + 's  wallΔ=' + wallDeltaS.toFixed(3) + 's  ratio=' + rateRatio.toFixed(4));
+      const ctxSr = (engine.ctx && engine.ctx.sampleRate) || 0;
+      // File is always 44.1kHz (per the scan). If ctxSr != 44100, every frame is resampled —
+      // on iPhone Air that's a known source of intermittent pitch wobble.
+      const resamp = ctxSr > 0 && ctxSr !== 44100 ? ' RESAMP→' + ctxSr : '';
+      console.log('[rate] fps=' + fps.toFixed(1) + '  ratio=' + rateRatio.toFixed(4) + '  ctxSr=' + ctxSr + '  resamp=' + (resamp ? 'yes' : 'no'));
       const hud = document.getElementById('rateHud');
-      if (hud) hud.textContent = 'FPS ' + fps.toFixed(0) + '  RATE ' + rateRatio.toFixed(3) + (Math.abs(1 - rateRatio) > 0.01 ? '  DRIFT!' : '  OK');
+      if (hud) hud.textContent = 'FPS ' + fps.toFixed(0) + '  RATE ' + rateRatio.toFixed(3) + (Math.abs(1 - rateRatio) > 0.01 ? '  DRIFT!' : '  OK') + resamp;
     }
 
     if (fps < 35 && !html.classList.contains('perf-lowest')) {
