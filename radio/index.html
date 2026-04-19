@@ -1828,6 +1828,11 @@ class AudioEngine {
       this.mediaEl.preload = 'auto';
       this.mediaEl.playsInline = true;
       this.mediaEl.style.display = 'none';
+      // Belt-and-suspenders: pin nominal playback. Some iOS Safari versions briefly set
+      // playbackRate != 1 after background→foreground transitions; this forces reset.
+      this.mediaEl.playbackRate = 1;
+      this.mediaEl.defaultPlaybackRate = 1;
+      if ('preservesPitch' in this.mediaEl) this.mediaEl.preservesPitch = true;
       document.body.appendChild(this.mediaEl);
     }
     this.mediaSource = this.ctx.createMediaElementSource(this.mediaEl);
@@ -2381,11 +2386,28 @@ function applyPerfTier(tier) {
 const _perfWatch = { frames: 0, t0: 0 };
 function perfWatchTick() {
   if (typeof engine === 'undefined' || !engine.playing) { _perfWatch.t0 = 0; return; }
-  if (_perfWatch.t0 === 0) { _perfWatch.t0 = performance.now(); _perfWatch.frames = 0; }
+  if (_perfWatch.t0 === 0) {
+    _perfWatch.t0 = performance.now();
+    _perfWatch.frames = 0;
+    _perfWatch.audioT0 = engine.currentTime;
+  }
   _perfWatch.frames++;
   if (_perfWatch.frames >= 120) {
-    const fps = 120_000 / (performance.now() - _perfWatch.t0);
+    const wallMs = performance.now() - _perfWatch.t0;
+    const fps = 120_000 / wallMs;
     const html = document.documentElement;
+    // Audio-vs-wall-clock drift: audio.currentTime should advance 1:1 with wall time.
+    // Ratio != 1.0 means the <audio> element is drifting (real speed issue).
+    const audioDelta = engine.currentTime - _perfWatch.audioT0;
+    const wallDeltaS = wallMs / 1000;
+    const rateRatio = wallDeltaS > 0 ? (audioDelta / wallDeltaS) : 1;
+
+    if (_perfWatch.rateLog) {
+      console.log('[rate] fps=' + fps.toFixed(1) + '  audioΔ=' + audioDelta.toFixed(3) + 's  wallΔ=' + wallDeltaS.toFixed(3) + 's  ratio=' + rateRatio.toFixed(4));
+      const hud = document.getElementById('rateHud');
+      if (hud) hud.textContent = 'FPS ' + fps.toFixed(0) + '  RATE ' + rateRatio.toFixed(3) + (Math.abs(1 - rateRatio) > 0.01 ? '  DRIFT!' : '  OK');
+    }
+
     if (fps < 35 && !html.classList.contains('perf-lowest')) {
       console.warn('[radio] FPS ' + fps.toFixed(1) + ' — demoting to perf-lowest');
       applyPerfTier('lowest');
@@ -2395,8 +2417,22 @@ function perfWatchTick() {
     }
     _perfWatch.frames = 0;
     _perfWatch.t0 = performance.now();
+    _perfWatch.audioT0 = engine.currentTime;
   }
 }
+
+// ?ratelog=1 turns on per-2s drift logging + a small on-screen HUD.
+// Use to confirm whether "audio speeds up/down" is real (ratio ≠ 1.0) or perceptual (ratio ≈ 1.0 + visible frame drops).
+(function initRateLog() {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('ratelog')) return;
+  _perfWatch.rateLog = true;
+  const hud = document.createElement('div');
+  hud.id = 'rateHud';
+  hud.style.cssText = 'position:fixed;top:8px;right:8px;z-index:600;background:rgba(0,0,0,0.85);color:var(--accent);font:10px "Courier New",monospace;letter-spacing:1px;padding:4px 8px;border-left:2px solid var(--accent);pointer-events:none;';
+  hud.textContent = 'waiting for playback…';
+  document.body.appendChild(hud);
+})();
 
 function setLoadStatus(key) { loadStatus.textContent = t(key); }
 function hideLoading() { loadingEl.classList.add('hidden'); setTimeout(() => loadingEl.style.display = 'none', 600); }
@@ -3091,6 +3127,8 @@ async function loadTrack(idx, options) {
   try {
     const url = await Registry.signUrl(rawUrl);
     const res = await engine.loadUrl(url, p => StreamRate.fetching(p));
+    // re-pin rate in case it drifted during the prior session
+    if (engine.mediaEl) engine.mediaEl.playbackRate = 1;
     // fresh analyzers for new track
     bpmDetector = new BPMDetector();
     keyDetector = new KeyDetector(engine.ctx ? engine.ctx.sampleRate : 44100);
@@ -3305,16 +3343,19 @@ function updateDbReadout(freq) {
   // first sync after layout
   setTimeout(syncTunerOffsetVar, 0);
 
-  // Hidden gesture: 5 taps on the "RADIO RECEIVER" title within 2s toggles the debug panel.
-  // Works regardless of ?subdbg=1 — lets us open debug on any phone without URL typing.
+  // Hidden gesture: 7 rapid taps on the "RADIO RECEIVER" title within 1.5s toggles the debug panel.
+  // Tight window + high tap-count prevents accidental triggers from mobile scroll-to-top taps,
+  // top-bar UI fiddling, or double-tap-to-zoom behaviour.
   const barTitle = document.getElementById('barTitle');
   if (barTitle) {
+    const TAPS_NEEDED = 7;
+    const WINDOW_MS   = 1500;
     let taps = 0, firstTapAt = 0;
     barTitle.addEventListener('click', () => {
       const now = Date.now();
-      if (now - firstTapAt > 2000) { taps = 0; firstTapAt = now; }
+      if (now - firstTapAt > WINDOW_MS) { taps = 0; firstTapAt = now; }
       taps++;
-      if (taps >= 5) {
+      if (taps >= TAPS_NEEDED) {
         taps = 0;
         const p = document.getElementById('debugPanel');
         if (p) p.classList.toggle('open');
