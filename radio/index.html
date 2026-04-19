@@ -285,7 +285,10 @@
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: 10px; row-gap: 6px;
+    /* lock minimum width so the card stays a steady size for "TWISTED DUALITY XXX" even when values are short */
+    min-width: var(--card-body-min, 220px);
     max-width: var(--card-body-max);
+    flex: 0 0 auto;                /* don't shrink below min-width inside the flex parent */
     opacity: 1; overflow: hidden;
     transition: max-width 0.35s ease, opacity 0.25s ease, padding 0.35s ease, border-width 0.3s ease;
   }
@@ -591,19 +594,19 @@
     border: 1px solid var(--accent-dim);
     border-left: 3px solid var(--accent);
     color: var(--fg);
-    font-size: var(--print-font-size); letter-spacing: 1px; line-height: 1.4;
+    /* print size = subtitle × 1.4 (re-evaluated per element so body-level overrides flow through) */
+    font-size: calc(var(--subtitle-font-size) * 1.4);
+    letter-spacing: 1px; line-height: 1.4;
     text-align: center;
     box-shadow: 0 10px 40px rgba(0,0,0,0.6), 4px 4px 0 var(--accent-dim);
   }
   @media (max-width: 520px) {
-    :root { --print-font-size: 15px; }
     .print-overlay .print-box { padding: 12px 18px; max-width: 90vw; margin-top: 15vh; }
   }
 
   /* ── SRT subtitle stack — sits above the tuner, stacks up to 3 cues ── */
   :root {
-    --print-font-size: 18px;                                        /* master size; mobile overrides */
-    --subtitle-font-size: calc(var(--print-font-size) - 5px);       /* derived: always 5px smaller */
+    --subtitle-font-size: 13px;     /* master; print derives as (subtitle × 1.4) inline on .print-box */
     --subtitle-padding-y: 5px;
     --subtitle-padding-x: 12px;
     --subtitle-bottom-offset: 128px;   /* tuner(118) + 10 gap; updated in JS when tuner resizes */
@@ -851,7 +854,7 @@
       --card-offset-y: -56px;
       --card-body-max: 60vw;
       --brand-bottom: 462px;
-      --print-font-size: 15px;          /* subtitle auto = 10px */
+      --subtitle-font-size: 10px;       /* print auto = 14px via ×1.4 */
       --subtitle-width: 95vw;
     }
     /* Tuner COLLAPSED on mobile → more room above, card + subtitle grow, logo drops closer */
@@ -859,15 +862,14 @@
       --card-offset-y: -65px;
       --card-body-max: 75vw;
       --brand-bottom: 298px;
-      --print-font-size: 20px;          /* subtitle auto = 15px */
+      --subtitle-font-size: 15px;       /* print auto = 21px via ×1.4 */
       --subtitle-width: 97vw;
     }
     .brand { padding: 6px 10px; }
     .brand .title { font-size: 16px; letter-spacing: 4px; }
-    /* card-body: tighter on mobile */
-    .track-card { font-size: 12px; }
+    /* card-body: tighter spacing on mobile (font-size + max-width driven by --card-font-size / --card-body-max) */
     .card-collapse { font-size: 10px; letter-spacing: 2px; }
-    .card-body { padding: 10px 12px; font-size: 11px; column-gap: 8px; row-gap: 4px; max-width: 72vw; }
+    .card-body { padding: 10px 12px; column-gap: 8px; row-gap: 4px; }
     .card-body .v { max-width: 56vw; }
   }
 
@@ -3114,8 +3116,8 @@ function updateDbReadout(freq) {
       const num = parseFloat(raw);
       if (isFinite(num)) liveVal = num;
     } else if (jsKey === 'subSize') {
-      const printPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--print-font-size'));
-      if (isFinite(printPx)) liveVal = printPx - 5;
+      const subPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--subtitle-font-size'));
+      if (isFinite(subPx)) liveVal = subPx;
     }
     if (liveVal != null) slider.value = String(liveVal);
     const write = () => {
@@ -3131,7 +3133,8 @@ function updateDbReadout(freq) {
         }
       }
       if (jsKey === 'subSize') {
-        document.documentElement.style.setProperty('--print-font-size', (v + 5) + 'px');
+        // slider writes subtitle directly; print auto-derives via calc(var * 1.4)
+        document.documentElement.style.setProperty('--subtitle-font-size', v + 'px');
       }
     };
     slider.addEventListener('input', write);
@@ -3140,22 +3143,38 @@ function updateDbReadout(freq) {
   }
   panel.querySelectorAll('input[type="range"]').forEach(bindRange);
 
-  // Demo subtitles: populate the stack with sample cues so we can see them offline
+  // Demo subtitles + mock text so the whole surface (card / cycler / print / subs) has something
+  // visible on mobile without needing a real track to play. Repeat-safe: just re-runs to refresh.
   function injectDemo() {
+    // subtitle stack — 3 cues with inline markup
     const stack = $('subtitleStack');
-    if (!stack) return;
-    stack.innerHTML = '';
-    const samples = [
-      '<b>Demo 1</b> — first subtitle line',
-      'Second <i>italic</i> line of a longer cue to check wrapping behaviour',
-      'Third — <u>underlined</u> and normal'
-    ];
-    samples.forEach(html => {
-      const el = document.createElement('div');
-      el.className = 'subtitle-line';
-      el.innerHTML = html;
-      stack.appendChild(el);
-    });
+    if (stack) {
+      stack.innerHTML = '';
+      const samples = [
+        '<b>Demo 1</b> — first subtitle line',
+        'Second <i>italic</i> line of a longer cue to check wrapping behaviour',
+        'Third — <u>underlined</u> and normal'
+      ];
+      samples.forEach(html => {
+        const el = document.createElement('div');
+        el.className = 'subtitle-line';
+        el.innerHTML = html;
+        stack.appendChild(el);
+      });
+    }
+    // track card: drop a mock signal so the card has its full "TWISTED DUALITY" width
+    const sigCell = document.getElementById('m-signal');
+    if (sigCell) sigCell.textContent = 'TWISTED DUALITY';
+    // exit the card-empty/collapsed states so signal row is visible and card body is expanded
+    if (typeof trackCard !== 'undefined') {
+      trackCard.classList.remove('card-empty', 'collapsed');
+      if (typeof updateCollapseLabel === 'function') updateCollapseLabel();
+    }
+    // tuner cycler line — mimic the live "TRACK: …" composite
+    const cycler = document.getElementById('trackNameCycler');
+    if (cycler) cycler.textContent = 'TRACK: TWISTED DUALITY | RE/IMAGINED';
+    // print overlay — flash for 5s so we can calibrate its size vs subtitle
+    if (typeof showPrintOverlay === 'function') showPrintOverlay('TWISTED DUALITY', 5);
   }
   const btnDemo = $('subDbgToggle');
   if (btnDemo) btnDemo.onclick = injectDemo;
