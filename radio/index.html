@@ -1746,30 +1746,37 @@ const Registry = {
 
   // Turn a raw audio URL into a signed URL via the Worker's /sign endpoint.
   // Only online tier needs signing; local/cfded URLs pass through unchanged.
-  // Signed URL lasts ~90s — we cache per URL for 70s to avoid re-sign spam on fast SCANs.
+  // Cache entries are considered fresh only if they have ≥30s left — audio fetches on
+  // slow mobile can take 20s+, and we don't want a token to expire mid-fetch (→ Rickroll).
   _signCache: Object.create(null),    // { url: { signedUrl, expiresAt_ms } }
+
+  // Fails LOUDLY on network error instead of falling back to the raw URL — otherwise the
+  // Worker sees an unsigned audio request and serves prank.mp3 (Rickroll mid-session).
   async signUrl(rawUrl) {
     if (!rawUrl) return rawUrl;
-    // only sign online R2 URLs
     if (!/^https?:\/\/assets\.afest\.io\/twysted\/radio\//.test(rawUrl)) return rawUrl;
     const nowMs = Date.now();
     const cached = this._signCache[rawUrl];
-    if (cached && cached.expiresAt_ms > nowMs + 2000) return cached.signedUrl;
+    const CACHE_SAFETY_MS = 30_000;   // must have ≥30s left to reuse
+    if (cached && cached.expiresAt_ms > nowMs + CACHE_SAFETY_MS) return cached.signedUrl;
+
+    const m = /^https?:\/\/assets\.afest\.io\/twysted\/radio\/(.+)$/.exec(rawUrl);
+    if (!m) return rawUrl;
+    const relPath = m[1].split('?')[0];
+    const signEndpoint = 'https://assets.afest.io/twysted/radio/sign?path=' + encodeURIComponent(relPath);
+    let res;
     try {
-      // derive relative path (drop the "assets.afest.io/twysted/radio/" prefix)
-      const m = /^https?:\/\/assets\.afest\.io\/twysted\/radio\/(.+)$/.exec(rawUrl);
-      if (!m) return rawUrl;
-      const relPath = m[1].split('?')[0];   // strip any pre-existing query
-      const signEndpoint = 'https://assets.afest.io/twysted/radio/sign?path=' + encodeURIComponent(relPath);
-      const res = await fetch(signEndpoint, { cache: 'no-store' });
-      if (!res.ok) return rawUrl;             // worker unreachable → use raw; Worker will serve prank
-      const data = await res.json();
-      if (!data || !data.url) return rawUrl;
-      // cache until ~70s from now (signed URL is valid 90s; keep margin for network)
-      const ttl = (data.expires ? (data.expires * 1000 - nowMs - 20000) : 70000);
-      this._signCache[rawUrl] = { signedUrl: data.url, expiresAt_ms: nowMs + Math.max(10000, ttl) };
-      return data.url;
-    } catch (_) { return rawUrl; }
+      res = await fetch(signEndpoint, { cache: 'no-store' });
+    } catch (e) {
+      throw new Error('sign-offline');   // network unreachable → caller aborts + reloads
+    }
+    if (!res.ok) throw new Error('sign-' + res.status);
+    const data = await res.json();
+    if (!data || !data.url) throw new Error('sign-empty');
+    // Cache for ~85s (token TTL 90s — 5s server-side slack). Consumer drops it if <30s left.
+    const ttl = (data.expires ? (data.expires * 1000 - nowMs - 5000) : 85_000);
+    this._signCache[rawUrl] = { signedUrl: data.url, expiresAt_ms: nowMs + Math.max(30_000, ttl) };
+    return data.url;
   },
 
   pickRandomIdx() {
@@ -2247,6 +2254,22 @@ const mAccess = $('m-access');
 const infoOverlay = $('infoOverlay'), infoTitleEl = $('infoTitle'), infoBodyEl = $('infoBody'), infoActionsEl = $('infoActions');
 const confirmOverlay = $('confirmOverlay'), confirmUrlEl = $('confirmUrl'), confirmBackBtn = $('confirmBack'), confirmGoBtn = $('confirmGo');
 const tunerEl = $('tuner'), tunerHandle = $('tunerHandle');
+
+// Wipe signed-URL cache when the tab returns after being hidden >30s.
+// Signed URLs live 90s; if the user backgrounded the tab for a while, any cached
+// tokens are probably expired or about to expire — a fresh /sign call is cheap
+// and dodges the race that ended in the Rickroll-mid-session bug.
+let _hiddenAt = 0;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
+  if (_hiddenAt && Date.now() - _hiddenAt > 30_000) {
+    if (typeof Registry !== 'undefined' && Registry._signCache) {
+      Registry._signCache = Object.create(null);
+      console.log('[radio] tab resumed after ' + Math.round((Date.now() - _hiddenAt)/1000) + 's hidden — signed-URL cache cleared');
+    }
+  }
+  _hiddenAt = 0;
+});
 
 // Tuner collapse/expand — no persistence, always starts expanded.
 // body.tuner-is-collapsed mirrors the state so CSS (mobile subtitle overrides, etc.) can react.
@@ -3098,6 +3121,17 @@ function applyMediaSession(idx) {
   } catch (_) { /* ignore — best-effort */ }
 }
 
+// Sign-failure handler: /sign is unreachable (expired tab session, CF blip, DNS, etc.).
+// Without this, fetching the raw URL would get us a Rickroll mid-session. Instead we
+// toast the user and reload after a short delay so they get a clean state.
+function handleSignFailure(reason) {
+  console.warn('[radio] sign failed (' + reason + ') — reloading for fresh session');
+  toast('Reconnecting…', 1500);
+  StreamRate.bad();
+  setTimeout(() => location.reload(), 1200);
+}
+function isSignError(e) { return e && typeof e.message === 'string' && e.message.indexOf('sign-') === 0; }
+
 async function reloadCurrent() {
   if (Registry.currentIdx < 0) return;
   const rawUrl = Registry.urlFor(Registry.currentIdx);
@@ -3116,7 +3150,10 @@ async function reloadCurrent() {
     updatePlayBtn();
     // rebuild LiveState + timeline cursor for the current offset (no print replay)
     TimelineRunner.reset(Registry.currentIdx);
-  } catch (e) { toast(t('failed')); StreamRate.bad(); }
+  } catch (e) {
+    if (isSignError(e)) { handleSignFailure(e.message); return; }
+    toast(t('failed')); StreamRate.bad();
+  }
 }
 
 async function loadTrack(idx, options) {
@@ -3146,6 +3183,7 @@ async function loadTrack(idx, options) {
     }
     return true;
   } catch (e) {
+    if (isSignError(e)) { handleSignFailure(e.message); return false; }
     toast(t('failed'));
     StreamRate.bad();
     return false;
@@ -3176,6 +3214,7 @@ btnScan.addEventListener('click', async () => {
   // kick fetch/decode in parallel, with progress
   let decodeOk = false;
   let loadedBytes = 0, dur = 0;
+  let signFailed = false;
   try {
     const rawUrl = Registry.urlFor(nextIdx);
     if (rawUrl) {
@@ -3183,7 +3222,17 @@ btnScan.addEventListener('click', async () => {
       const res = await engine.loadUrl(url, p => StreamRate.fetching(p));
       if (res && res.buffer) { loadedBytes = res.bytes || 0; dur = res.buffer.duration; decodeOk = true; }
     }
-  } catch (e) { decodeOk = false; }
+  } catch (e) {
+    decodeOk = false;
+    if (isSignError(e)) signFailed = e.message;
+  }
+  if (signFailed) {
+    engine.stopNoise();
+    btnScan.classList.remove('active');
+    _scanInFlight = false;
+    handleSignFailure(signFailed);
+    return;
+  }
 
   // ensure at least tuneDur ms of noise before fade
   const elapsed = performance.now() - tuneStart;
