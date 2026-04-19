@@ -874,18 +874,30 @@
   }
 
   /* ── Shorter-viewport tier (iPhone 17 Pro / Chrome URL-bar etc, baked ≤720vh) ── */
-  /* Applied on top of the ≤860vw preset above; overrides height-sensitive values only. */
+  /* Second-pass tuning: card scale bumped, logo smaller+higher, subtitle much more compact in FULL. */
   @media (max-width: 860px) and (max-height: 720px) {
     :root {
-      --card-offset-y: -75px;           /* 17Pro Safari/Chrome avg (user kept flat across states) */
-      --card-body-max: 60vw;            /* stays 60 on this device */
-      --brand-bottom: 455px;            /* 17Pro Safari 462 / Chrome 448 avg */
+      --card-scale: 0.95;
+      --card-offset-y: -65px;
+      --card-body-max: 60vw;
+      --brand-bottom: 494px;
+      --brand-scale: 0.5;
+      /* Subtitle — FULL state (tight: small font, minimal padding/gap) */
+      --subtitle-font-size: 9px;        /* print auto = 12.6px via ×1.4 */
+      --subtitle-padding-y: 2px;
+      --subtitle-padding-x: 4px;
+      --subtitle-width: 90vw;
+      --subtitle-gap: 2px;
     }
     body.tuner-is-collapsed {
-      --card-offset-y: -75px;           /* same as FULL on shorter viewports */
-      --card-body-max: 60vw;            /* no expansion on collapse */
-      --brand-bottom: 290px;            /* drop the logo on collapse (mirrors AIR behaviour, shorter vh) */
-      --subtitle-padding-y: 12px;       /* 17Pro wants more breathing room when collapsed */
+      --card-offset-y: -65px;           /* user kept card flat across states on 17Pro */
+      --card-body-max: 60vw;
+      --brand-bottom: 494px;            /* logo stays put on 17Pro */
+      /* Subtitle — COLLAPSED state: roomier padding, slightly wider */
+      --subtitle-padding-y: 3px;
+      --subtitle-padding-x: 30px;
+      --subtitle-width: 91vw;
+      --subtitle-gap: 4px;
     }
   }
   /* mobile: quality row regains its old slim full-width look + RECALIBRATE SIGNAL label */
@@ -3123,7 +3135,9 @@ function updateDbReadout(freq) {
     const write = () => {
       const v = parseFloat(slider.value);
       if (dv) dv.textContent = format(v);
-      if (cssVar) document.documentElement.style.setProperty(cssVar, format(v) + unit);
+      // Write to <body> inline — inline specificity beats the body.tuner-is-collapsed class rules
+      // so user adjustments stick when toggling FULL ↔ COLLAPSED.
+      if (cssVar) document.body.style.setProperty(cssVar, format(v) + unit);
       if (cfgKey && typeof CFG !== 'undefined') {
         CFG[cfgKey] = v;
         if (cfgKey === 'terrainLines' && typeof terrain !== 'undefined' && terrain.buffer) {
@@ -3133,8 +3147,8 @@ function updateDbReadout(freq) {
         }
       }
       if (jsKey === 'subSize') {
-        // slider writes subtitle directly; print auto-derives via calc(var * 1.4)
-        document.documentElement.style.setProperty('--subtitle-font-size', v + 'px');
+        // subtitle is master; print auto-derives via calc(var * 1.4) on .print-box
+        document.body.style.setProperty('--subtitle-font-size', v + 'px');
       }
     };
     slider.addEventListener('input', write);
