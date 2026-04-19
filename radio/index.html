@@ -195,8 +195,15 @@
   html.no-transparency .toast        { background: var(--panel); }
 
   /* ── brand (bottom-right corner — sits above the subtitle zone + tuner) ── */
+  :root {
+    --brand-right: 24px;
+    --brand-bottom: 260px;
+    --brand-scale: 1;
+  }
   .brand {
-    position: fixed; bottom: 260px; right: 24px; z-index: 5;
+    position: fixed; bottom: var(--brand-bottom); right: var(--brand-right); z-index: 5;
+    transform: scale(var(--brand-scale));
+    transform-origin: bottom right;
     text-align: right; pointer-events: none;
     /* translucent glass plate so text stays readable over the noise waveform */
     padding: 8px 14px;
@@ -828,7 +835,31 @@
     .tuner .frequency-panel { min-width: 0; }
     .tuner .transport { justify-content: center; }
     #viz { height: calc(100% - 260px); }
-    .brand { bottom: 420px; right: 14px; padding: 6px 10px; }    /* lifted above the subtitle zone on mobile */
+    :root {
+      /* ── Mobile preset (baked from iPhone AIR / Safari 26.4 tuning session) ── */
+      --brand-right: 14px;
+      --brand-bottom: 420px;
+      --brand-scale: 1;
+      --card-scale: 0.8;
+      --card-offset-y: -56px;
+      --card-body-max: 60vw;
+      --card-font-size: 15px;
+      --card-strip-w: 30px;
+      /* Subtitle — values when tuner is FULL (more compact layout) */
+      --print-font-size: 15px;          /* subtitle auto = 10px */
+      --subtitle-padding-y: 3px;
+      --subtitle-padding-x: 30px;
+      --subtitle-width: 95vw;
+      --subtitle-gap: 4px;
+      --subtitle-extra: 0px;
+    }
+    /* When tuner collapses on mobile, give subtitles more breathing room */
+    body.tuner-is-collapsed {
+      --print-font-size: 20px;          /* subtitle auto = 15px */
+      --subtitle-padding-y: 6px;
+      --subtitle-extra: 6px;
+    }
+    .brand { padding: 6px 10px; }
     .brand .title { font-size: 16px; letter-spacing: 4px; }
     /* card-body: tighter on mobile */
     .track-card { font-size: 12px; }
@@ -1023,6 +1054,15 @@
       <div class="debug-row"><span>Gap</span>      <input type="range" min="0"    max="12"   step="1"    value="4"   data-css="--subtitle-gap"       data-unit="px"><span class="dv" id="dv---subtitle-gap">4</span></div>
       <div class="debug-row"><span>Bottom +</span> <input type="range" min="0"    max="200"  step="2"    value="0"   data-css="--subtitle-extra"     data-unit="px"><span class="dv" id="dv---subtitle-extra">0</span></div>
       <button class="dbg-btn" id="subDbgToggle" type="button">DEMO SUBTITLES</button>
+    </div>
+  </details>
+
+  <details>
+    <summary>Logo (WSI)</summary>
+    <div class="debug-body">
+      <div class="debug-row"><span>Right</span>  <input type="range" min="0"   max="80"  step="1"    value="24"  data-css="--brand-right"  data-unit="px"><span class="dv" id="dv---brand-right">24</span></div>
+      <div class="debug-row"><span>Bottom</span> <input type="range" min="80"  max="600" step="2"    value="260" data-css="--brand-bottom" data-unit="px"><span class="dv" id="dv---brand-bottom">260</span></div>
+      <div class="debug-row"><span>Scale</span>  <input type="range" min="0.5" max="1.8" step="0.05" value="1"   data-css="--brand-scale"  data-fmt="f2"><span class="dv" id="dv---brand-scale">1.00</span></div>
     </div>
   </details>
 
@@ -2067,15 +2107,41 @@ const confirmOverlay = $('confirmOverlay'), confirmUrlEl = $('confirmUrl'), conf
 const tunerEl = $('tuner'), tunerHandle = $('tunerHandle');
 
 // Tuner collapse/expand — no persistence, always starts expanded.
+// body.tuner-is-collapsed mirrors the state so CSS (mobile subtitle overrides, etc.) can react.
+function syncTunerBodyClass() {
+  document.body.classList.toggle('tuner-is-collapsed', tunerEl && tunerEl.classList.contains('collapsed'));
+}
 if (tunerHandle) {
   tunerHandle.addEventListener('click', () => {
     const collapsed = tunerEl.classList.toggle('collapsed');
     tunerHandle.setAttribute('aria-label', collapsed ? 'Expand tuner' : 'Collapse tuner');
     tunerHandle.setAttribute('title',      collapsed ? 'Expand' : 'Collapse');
+    syncTunerBodyClass();
     // subtitle stack follows the tuner height
     if (typeof syncTunerOffsetVar === 'function') syncTunerOffsetVar();
   });
 }
+syncTunerBodyClass();
+
+// Mobile waveform preset — baked from iPhone AIR tuning. Applied when viewport is narrow
+// at boot time (does not live-migrate across breakpoint resizes — the debug panel handles
+// per-device overrides once opened).
+(function applyMobilePreset() {
+  if (typeof CFG === 'undefined') return;
+  if (!window.matchMedia('(max-width: 860px)').matches) return;
+  Object.assign(CFG, {
+    _posX: 5, _posY: 94, _width: 66,
+    isoOffsetX: 7.7, isoOffsetY: 3.3,
+    heightScale: 3.8, terrainLines: 80,
+    lineWidth: 1, pushEvery: 3
+  });
+  // Terrain buffer was sized at class-construct time with the old 113 — resize now.
+  if (typeof terrain !== 'undefined' && terrain.buffer) {
+    terrain.buffer = new Float32Array(CFG.terrainLines * CFG.freqSamples);
+    terrain.beatFlags = new Uint8Array(CFG.terrainLines);
+    terrain.head = 0;
+  }
+})();
 
 function setLoadStatus(key) { loadStatus.textContent = t(key); }
 function hideLoading() { loadingEl.classList.add('hidden'); setTimeout(() => loadingEl.style.display = 'none', 600); }
@@ -3019,13 +3085,26 @@ function updateDbReadout(freq) {
       if (fmt === 'f1') return n.toFixed(1);
       return Number.isInteger(n) ? String(n) : String(n);
     };
-    const apply = () => {
+    // Sync slider → reflect the CURRENT live state (CFG / CSS var) so baked mobile
+    // presets or prior adjustments aren't clobbered when the panel first opens.
+    let liveVal = null;
+    if (cfgKey && typeof CFG !== 'undefined' && CFG[cfgKey] != null) {
+      liveVal = CFG[cfgKey];
+    } else if (cssVar) {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+      const num = parseFloat(raw);
+      if (isFinite(num)) liveVal = num;
+    } else if (jsKey === 'subSize') {
+      const printPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--print-font-size'));
+      if (isFinite(printPx)) liveVal = printPx - 5;
+    }
+    if (liveVal != null) slider.value = String(liveVal);
+    const write = () => {
       const v = parseFloat(slider.value);
       if (dv) dv.textContent = format(v);
       if (cssVar) document.documentElement.style.setProperty(cssVar, format(v) + unit);
       if (cfgKey && typeof CFG !== 'undefined') {
         CFG[cfgKey] = v;
-        // terrainLines needs the ring-buffer rebuilt to match
         if (cfgKey === 'terrainLines' && typeof terrain !== 'undefined' && terrain.buffer) {
           terrain.buffer = new Float32Array(v * CFG.freqSamples);
           terrain.beatFlags = new Uint8Array(v);
@@ -3033,12 +3112,12 @@ function updateDbReadout(freq) {
         }
       }
       if (jsKey === 'subSize') {
-        // print is master; subtitle auto-derives (size-5) via the derived var
         document.documentElement.style.setProperty('--print-font-size', (v + 5) + 'px');
       }
     };
-    slider.addEventListener('input', apply);
-    apply();
+    slider.addEventListener('input', write);
+    // Refresh only the readout on first bind — do NOT re-write state (would override live values).
+    if (dv) dv.textContent = format(parseFloat(slider.value));
   }
   panel.querySelectorAll('input[type="range"]').forEach(bindRange);
 
@@ -3558,7 +3637,9 @@ const Settings = {
 
   applyWaves() {
     const mult = this.waves === '50' ? 0.5 : this.waves === '75' ? 0.75 : 1;
-    const newLines = Math.max(20, Math.round(113 * mult));
+    // Baseline differs by device (mobile preset uses 80 lines) — scale off that.
+    const base = window.matchMedia('(max-width: 860px)').matches ? 80 : 113;
+    const newLines = Math.max(20, Math.round(base * mult));
     if (CFG.terrainLines !== newLines) {
       CFG.terrainLines = newLines;
       // rebuild the terrain ring buffer for the new line count
