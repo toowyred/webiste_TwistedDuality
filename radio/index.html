@@ -678,12 +678,13 @@
   .debug-panel details > .debug-body { padding: 4px 0 2px; }
   .debug-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
   .debug-row > span:first-child {
-    min-width: 70px; color: var(--muted); font-size: 9px;
+    flex: 0 0 62px; color: var(--muted); font-size: 9px;
     text-transform: uppercase; letter-spacing: 1px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .debug-row input[type="range"] { flex: 1; height: 3px; accent-color: var(--accent); cursor: pointer; }
+  .debug-row input[type="range"] { flex: 1 1 auto; min-width: 0; height: 3px; accent-color: var(--accent); cursor: pointer; }
   .debug-row .dv {
-    min-width: 36px; text-align: right; color: var(--accent); font-size: 10px;
+    flex: 0 0 42px; text-align: right; color: var(--accent); font-size: 10px;
     font-family: 'Courier New', monospace;
   }
   .debug-panel button.dbg-btn {
