@@ -3988,6 +3988,116 @@ const LinksRegistry = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// CODES REGISTRY + KEY-UNLOCK UI
+// Parses radio/codes.dat (fetched from the same tier as signal.dat).
+// File format:  code=target   (target = track:<id> | debugMode | lang:<xx> | perf:<tier>)
+// Comments start with '#', blank lines ignored.
+// ══════════════════════════════════════════════════════════════════
+const CodesRegistry = {
+  map: Object.create(null),
+
+  async init() {
+    if (!Registry.source) return;
+    const url = Registry.source.signal.replace(/[^/]+$/, 'codes.dat');
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) return;
+      const text = await r.text();
+      for (const line of text.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq <= 0) continue;
+        const code = trimmed.slice(0, eq).trim();
+        const target = trimmed.slice(eq + 1).trim();
+        if (code && target) this.map[code] = target;
+      }
+    } catch (_) { /* silent — codes are optional */ }
+  },
+
+  resolve(code) { return this.map[String(code || '').trim()] || null; },
+
+  // Find the track index for "td-audio003" or "td-audio003-normal.mp3" etc.
+  _trackIdxForId(trackId) {
+    if (!trackId) return -1;
+    const want = String(trackId).toLowerCase();
+    return Registry.tracks.findIndex(t => {
+      const f = ((t.files && t.files[0]) || t.meta.offline_file || '').toLowerCase();
+      const stripped = f.replace(/-(?:normal|high|off)\.(?:mp3|wav)$/, '');
+      return stripped === want || f === want || stripped.startsWith(want + '-');
+    });
+  },
+
+  async apply(target) {
+    if (target.startsWith('track:')) {
+      const id = target.slice(6).trim();
+      const idx = this._trackIdxForId(id);
+      if (idx < 0) { toast('track not found'); return false; }
+      await loadTrack(idx, { autoplay: true });
+      return true;
+    }
+    if (target === 'debugMode') {
+      const dbg = document.getElementById('debugPanel');
+      if (dbg) dbg.classList.add('open');
+      return true;
+    }
+    if (target.startsWith('lang:')) {
+      const lang = target.slice(5).trim();
+      if (typeof I18N !== 'undefined' && I18N[lang]) { applyLang(lang); return true; }
+      return false;
+    }
+    if (target.startsWith('perf:')) {
+      const tier = target.slice(5).trim();
+      if (['low','lowest','high'].includes(tier) && typeof applyPerfTier === 'function') {
+        applyPerfTier(tier); return true;
+      }
+      return false;
+    }
+    return false;
+  }
+};
+
+(function initCodeUnlockUI() {
+  const panel  = document.getElementById('codePanel');
+  const keyBtn = document.getElementById('codeKey');
+  const input  = document.getElementById('codeInput');
+  const goBtn  = document.getElementById('codeGo');
+  if (!panel || !keyBtn || !input || !goBtn) return;
+
+  const setExpanded = (expand) => {
+    const next = (expand == null) ? !panel.classList.contains('expanded') : !!expand;
+    panel.classList.toggle('expanded', next);
+    panel.querySelector('.code-expand').setAttribute('aria-hidden', next ? 'false' : 'true');
+    if (next) { input.value = ''; setTimeout(() => input.focus(), 20); }
+  };
+
+  const submit = async () => {
+    const code = (input.value || '').trim();
+    if (!code) return;
+    const target = CodesRegistry.resolve(code);
+    if (!target) {
+      input.classList.add('code-input--wrong');
+      setTimeout(() => input.classList.remove('code-input--wrong'), 500);
+      return;
+    }
+    setExpanded(false);
+    const ok = await CodesRegistry.apply(target);
+    if (!ok) toast('code target unavailable');
+  };
+
+  keyBtn.addEventListener('click', (e) => { e.stopPropagation(); setExpanded(); });
+  goBtn.addEventListener('click', submit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter')  { e.preventDefault(); submit(); }
+    if (e.key === 'Escape') { e.preventDefault(); setExpanded(false); }
+  });
+  // click/tap outside the panel collapses it
+  document.addEventListener('click', (e) => {
+    if (panel.classList.contains('expanded') && !panel.contains(e.target)) setExpanded(false);
+  });
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // ACCESS DIALOG — access=none (nag-us IG) / access=granted (streaming links)
 // ══════════════════════════════════════════════════════════════════
 const AW_OK_TEXTS = ['[ *sigh* ]', '[ ugh fine ]', '[ OK ]', '[ ight ]', '[ CLOSE ]', '[ BACK ]'];
