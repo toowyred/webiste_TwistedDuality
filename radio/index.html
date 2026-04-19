@@ -219,19 +219,30 @@
   .brand .sub a:hover { opacity: 0.7; }
 
   /* ── track card (middle-left edge; vertical COLLAPSE button + 2-col body) ── */
+  :root {
+    --card-scale: 1;
+    --card-offset-x: 0px;
+    --card-offset-y: 0px;
+    --card-font-size: 14px;
+    --card-body-max: 60vw;
+    --card-strip-w: 30px;
+  }
   .track-card {
-    position: fixed; top: 50%; left: 0;
-    transform: translateY(-50%);
+    position: fixed;
+    top: calc(50% + var(--card-offset-y));
+    left: var(--card-offset-x);
+    transform: translateY(-50%) scale(var(--card-scale));
+    transform-origin: left center;                             /* anchor to the left edge while scaling */
     z-index: 4;
     display: flex; align-items: stretch;
-    font-size: 14px; letter-spacing: 0.5px;   /* desktop default; mobile override shrinks */
+    font-size: var(--card-font-size); letter-spacing: 0.5px;   /* mobile override shrinks via @media */
     color: var(--fg);
     /* min-height is set by JS — the tallest vertical label across langs */
   }
 
   /* the orange left strip IS the button — solid accent bg, dark text */
   .card-collapse {
-    flex: 0 0 auto; width: 30px;
+    flex: 0 0 auto; width: var(--card-strip-w);
     background: var(--accent);
     border: none;
     color: #0a1211;
@@ -267,7 +278,7 @@
     display: grid;
     grid-template-columns: auto 1fr;
     column-gap: 10px; row-gap: 6px;
-    max-width: 60vw;
+    max-width: var(--card-body-max);
     opacity: 1; overflow: hidden;
     transition: max-width 0.35s ease, opacity 0.25s ease, padding 0.35s ease, border-width 0.3s ease;
   }
@@ -573,29 +584,34 @@
     border: 1px solid var(--accent-dim);
     border-left: 3px solid var(--accent);
     color: var(--fg);
-    font-size: 18px; letter-spacing: 1px; line-height: 1.4;
+    font-size: var(--print-font-size); letter-spacing: 1px; line-height: 1.4;
     text-align: center;
     box-shadow: 0 10px 40px rgba(0,0,0,0.6), 4px 4px 0 var(--accent-dim);
   }
   @media (max-width: 520px) {
-    .print-overlay .print-box { font-size: 15px; padding: 12px 18px; max-width: 90vw; margin-top: 15vh; }
+    :root { --print-font-size: 15px; }
+    .print-overlay .print-box { padding: 12px 18px; max-width: 90vw; margin-top: 15vh; }
   }
 
   /* ── SRT subtitle stack — sits above the tuner, stacks up to 3 cues ── */
   :root {
-    --subtitle-font-size: 13px;
+    --print-font-size: 18px;                                        /* master size; mobile overrides */
+    --subtitle-font-size: calc(var(--print-font-size) - 5px);       /* derived: always 5px smaller */
     --subtitle-padding-y: 5px;
     --subtitle-padding-x: 12px;
     --subtitle-bottom-offset: 128px;   /* tuner(118) + 10 gap; updated in JS when tuner resizes */
+    --subtitle-extra: 0px;             /* debug slider adds on top of the auto offset */
+    --subtitle-width: 80vw;
+    --subtitle-gap: 4px;
   }
   .subtitle-stack {
     position: fixed;
     left: 50%; transform: translateX(-50%);
-    bottom: var(--subtitle-bottom-offset);
-    width: 80vw;
-    z-index: 140;                       /* below the dialog (400) + tuner z=150? Note: must sit above tuner visually when collapsed, so 140 is fine since stack is ABOVE tuner in space */
+    bottom: calc(var(--subtitle-bottom-offset) + var(--subtitle-extra));
+    width: var(--subtitle-width);
+    z-index: 140;
     display: flex; flex-direction: column; align-items: center;
-    gap: 4px;
+    gap: var(--subtitle-gap);
     pointer-events: none;
   }
   .subtitle-line {
@@ -625,22 +641,55 @@
   .subtitle-line i, .subtitle-line em     { font-style: italic; }
   .subtitle-line u                        { text-decoration: underline; }
 
-  /* debug: size/tune controls for subtitle (activated via ?subdbg=1) */
-  .subtitle-dbg {
-    position: fixed; bottom: 10px; left: 10px; z-index: 500;
-    display: none;
-    background: rgba(0,0,0,0.85); color: var(--fg);
-    padding: 6px 8px;
-    font-family: 'Courier New', monospace; font-size: 10px;
-    letter-spacing: 1px;
+  /* debug panel (activated via ?subdbg=1) — modelled after wsi-player's debug */
+  .debug-panel {
+    display: none; position: fixed; top: 10px; left: 10px; z-index: 500;
+    background: rgba(0,0,0,0.88); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.12);
     border-left: 2px solid var(--accent);
+    padding: 10px 14px; min-width: 240px; max-height: 85vh; overflow: auto;
+    color: var(--fg);
+    font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
   }
-  .subtitle-dbg.show { display: flex; gap: 4px; align-items: center; }
-  .subtitle-dbg button {
+  .debug-panel.open { display: block; }
+  .debug-title {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .debug-close { cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; }
+  .debug-close:hover { color: var(--fg); }
+  .debug-section {
+    color: var(--muted); font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+    margin: 10px 0 4px; padding-bottom: 3px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .debug-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .debug-row > span:first-child {
+    min-width: 70px; color: var(--muted); font-size: 9px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .debug-row input[type="range"] { flex: 1; height: 3px; accent-color: var(--accent); cursor: pointer; }
+  .debug-row .dv {
+    min-width: 36px; text-align: right; color: var(--accent); font-size: 10px;
+    font-family: 'Courier New', monospace;
+  }
+  .debug-panel button.dbg-btn {
     background: var(--accent); color: #000; border: none;
-    padding: 3px 8px; cursor: pointer; font: inherit; font-weight: bold;
+    padding: 4px 10px; cursor: pointer; font: inherit; font-weight: bold; letter-spacing: 1px;
+    margin-top: 6px;
   }
-  .subtitle-dbg span { color: var(--accent); min-width: 3em; text-align: center; }
+  .debug-info {
+    color: var(--fg); background: rgba(255,255,255,0.04);
+    padding: 6px 8px; font-size: 9px; letter-spacing: 0.5px; line-height: 1.5;
+    white-space: pre; font-family: 'Courier New', monospace;
+    border-left: 1px solid var(--accent-dim);
+  }
+  .debug-toast {
+    display: none; margin-top: 4px; padding: 3px 6px;
+    background: var(--good, #4caf50); color: #000;
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .debug-toast.show { display: block; }
 
   /* ── toast ── */
   .toast {
@@ -765,7 +814,7 @@
     .tuner .frequency-panel { min-width: 0; }
     .tuner .transport { justify-content: center; }
     #viz { height: calc(100% - 260px); }
-    .brand { bottom: 270px; right: 14px; }
+    .brand { bottom: 420px; right: 14px; padding: 6px 10px; }    /* lifted above the subtitle zone on mobile */
     .brand .title { font-size: 16px; letter-spacing: 4px; }
     /* card-body: tighter on mobile */
     .track-card { font-size: 12px; }
@@ -934,10 +983,32 @@
 <!-- print overlay (centered, upper-third — fires on timeline 'print' events) -->
 <!-- subtitle stack (SRT) — above tuner, max 3 cues, newest at bottom -->
 <div class="subtitle-stack" id="subtitleStack" aria-hidden="true"></div>
-<!-- debug controls for subtitle size (shown only when ?subdbg=1) -->
-<div class="subtitle-dbg" id="subtitleDbg">
-  SIZE <button id="subSizeDown" type="button">−</button><span id="subSizeVal">13</span><button id="subSizeUp" type="button">+</button>
-  <button id="subDbgToggle" type="button" style="margin-left:8px">DEMO</button>
+<!-- debug panel (activate with ?subdbg=1) — track-card + subtitle + print tuning -->
+<div class="debug-panel" id="debugPanel">
+  <div class="debug-title">DEBUG <span class="debug-close" id="debugClose">&times;</span></div>
+
+  <div class="debug-section">Track Card</div>
+  <div class="debug-row"><span>Scale</span>    <input type="range" min="0.6"  max="1.6"  step="0.05" value="1"   data-css="--card-scale"      data-fmt="f2"><span class="dv" id="dv---card-scale">1.00</span></div>
+  <div class="debug-row"><span>Offset X</span> <input type="range" min="0"    max="60"   step="1"    value="0"   data-css="--card-offset-x"   data-unit="px"><span class="dv" id="dv---card-offset-x">0</span></div>
+  <div class="debug-row"><span>Offset Y</span> <input type="range" min="-120" max="120"  step="1"    value="0"   data-css="--card-offset-y"   data-unit="px"><span class="dv" id="dv---card-offset-y">0</span></div>
+  <div class="debug-row"><span>Body Max W</span><input type="range" min="30"  max="85"   step="1"    value="60"  data-css="--card-body-max"   data-unit="vw"><span class="dv" id="dv---card-body-max">60</span></div>
+  <div class="debug-row"><span>Font</span>     <input type="range" min="10"   max="20"   step="0.5"  value="14"  data-css="--card-font-size"  data-unit="px"><span class="dv" id="dv---card-font-size">14</span></div>
+  <div class="debug-row"><span>Strip W</span>  <input type="range" min="20"   max="50"   step="1"    value="30"  data-css="--card-strip-w"    data-unit="px"><span class="dv" id="dv---card-strip-w">30</span></div>
+
+  <div class="debug-section">Subtitle</div>
+  <div class="debug-row"><span>Size</span>     <input type="range" min="9"    max="24"   step="1"    value="13"  data-js="subSize"><span class="dv" id="dv-subSize">13</span></div>
+  <div class="debug-row"><span>Pad Y</span>    <input type="range" min="2"    max="14"   step="1"    value="5"   data-css="--subtitle-padding-y" data-unit="px"><span class="dv" id="dv---subtitle-padding-y">5</span></div>
+  <div class="debug-row"><span>Pad X</span>    <input type="range" min="4"    max="30"   step="1"    value="12"  data-css="--subtitle-padding-x" data-unit="px"><span class="dv" id="dv---subtitle-padding-x">12</span></div>
+  <div class="debug-row"><span>Width</span>    <input type="range" min="40"   max="100"  step="1"    value="80"  data-css="--subtitle-width"     data-unit="vw"><span class="dv" id="dv---subtitle-width">80</span></div>
+  <div class="debug-row"><span>Gap</span>      <input type="range" min="0"    max="12"   step="1"    value="4"   data-css="--subtitle-gap"       data-unit="px"><span class="dv" id="dv---subtitle-gap">4</span></div>
+  <div class="debug-row"><span>Bottom +</span> <input type="range" min="0"    max="200"  step="2"    value="0"   data-css="--subtitle-extra"     data-unit="px"><span class="dv" id="dv---subtitle-extra">0</span></div>
+
+  <button class="dbg-btn" id="subDbgToggle" type="button">DEMO SUBTITLES</button>
+
+  <div class="debug-section">Device</div>
+  <div class="debug-info" id="debugInfo">—</div>
+  <button class="dbg-btn" id="dbgCopy" type="button">COPY INFO + SETTINGS</button>
+  <div class="debug-toast" id="dbgToast"></div>
 </div>
 
 <div class="print-overlay" id="printOverlay" aria-hidden="true">
@@ -1961,6 +2032,8 @@ if (tunerHandle) {
     const collapsed = tunerEl.classList.toggle('collapsed');
     tunerHandle.setAttribute('aria-label', collapsed ? 'Expand tuner' : 'Collapse tuner');
     tunerHandle.setAttribute('title',      collapsed ? 'Expand' : 'Collapse');
+    // subtitle stack follows the tuner height
+    if (typeof syncTunerOffsetVar === 'function') syncTunerOffsetVar();
   });
 }
 
@@ -2341,6 +2414,138 @@ const FieldCycler = {
   }
 };
 
+// ══════════════════════════════════════════════════════════════════
+// SRT SUBTITLES — fetched per-track (same srt file across -high/-normal/-off),
+// stored in radio/srt/ adjacent to signal.dat.
+// Active cues render in #subtitleStack above the tuner; max 3 lines on screen.
+// Missing file is silent (no error); coexists with print overlay.
+// ══════════════════════════════════════════════════════════════════
+function parseSRT(text) {
+  // Accept either comma or period as decimal separator (SRT / WebVTT-lite).
+  // Optional numeric index line and blank-line block separation.
+  const cues = [];
+  const blocks = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n\r?\n+/);
+  for (const block of blocks) {
+    const lines = block.split(/\r?\n/).map(s => s).filter(s => s.length);
+    if (lines.length < 2) continue;
+    let i = 0;
+    if (/^\d+$/.test(lines[0].trim())) i = 1;
+    const tl = lines[i++] || '';
+    const m = tl.match(/(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/);
+    if (!m) continue;
+    const toSec = (h, mm, s, ms) => (+h) * 3600 + (+mm) * 60 + (+s) + (+ms) / 1000;
+    const start = toSec(m[1], m[2], m[3], m[4]);
+    const end   = toSec(m[5], m[6], m[7], m[8]);
+    const text  = lines.slice(i).join('\n').trim();
+    if (text) cues.push({ start, end, text });
+  }
+  // sanity: sort by start time (SRT files are already ordered, but be safe)
+  cues.sort((a, b) => a.start - b.start);
+  return cues;
+}
+
+const SubtitleRunner = {
+  cues: [],
+  active: new Map(),     // cueIndex → { el }
+  MAX_VISIBLE: 3,
+
+  reset() {
+    const stack = $('subtitleStack');
+    if (stack) stack.innerHTML = '';
+    this.active.clear();
+  },
+
+  clearAll() {
+    this.reset();
+    this.cues = [];
+  },
+
+  // Read srt= from meta. Formats:
+  //   srt=0                → off
+  //   srt=0; filename      → off (filename ignored)
+  //   srt=1                → on, use default name (track id + .srt)
+  //   srt=1; filename      → on, custom filename (with or without .srt extension)
+  async loadForTrack(idx) {
+    this.clearAll();
+    if (idx < 0 || !Registry.source) return;
+    const raw = String(Registry.metaFor(idx, 'srt') || '').trim();
+    if (!raw) return;
+    const parts = raw.split(/\s*;\s*/);
+    const onOff = (parts[0] || '').trim();
+    if (onOff !== '1') return;
+    let fileName = (parts[1] || '').trim();
+    if (!fileName) {
+      // default: track id derived same way as track-links
+      fileName = (typeof LinksRegistry !== 'undefined' && LinksRegistry.idForTrack)
+        ? (LinksRegistry.idForTrack(idx) || '') : '';
+    }
+    if (!fileName) return;
+    if (!/\.srt$/i.test(fileName)) fileName += '.srt';
+    // SRT folder is sibling to signal.dat in whichever tier succeeded.
+    const base = Registry.source.signal.replace(/[^/]+$/, 'srt/');
+    const url = base + fileName;
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) return;            // file absent → silent no-op
+      const text = await res.text();
+      this.cues = parseSRT(text);
+    } catch (_) { /* network/CORS glitch: silent */ }
+  },
+
+  // Called from loop() each frame with current playback time.
+  tick(currentTime) {
+    if (!this.cues.length) return;
+    // spawn cues whose window has just been entered
+    for (let i = 0; i < this.cues.length; i++) {
+      const c = this.cues[i];
+      if (currentTime >= c.start && currentTime < c.end) {
+        if (!this.active.has(i)) this._show(i, c);
+      }
+    }
+    // retire cues whose window has passed (or was jumped over via seek)
+    for (const [i] of this.active) {
+      const c = this.cues[i];
+      if (!c || currentTime >= c.end || currentTime < c.start) this._hide(i);
+    }
+  },
+
+  _show(i, cue) {
+    const stack = $('subtitleStack');
+    if (!stack) return;
+    const el = document.createElement('div');
+    el.className = 'subtitle-line';
+    el.innerHTML = cue.text.replace(/\n/g, '<br>');   // full HTML formatting per spec
+    stack.appendChild(el);
+    this.active.set(i, { el });
+    // cap at 3 visible — the oldest on top bites the dust
+    while (stack.children.length > this.MAX_VISIBLE) {
+      const victim = stack.firstElementChild;
+      // drop from active map too
+      for (const [k, v] of this.active) {
+        if (v.el === victim) { this.active.delete(k); break; }
+      }
+      stack.removeChild(victim);
+    }
+  },
+
+  _hide(i) {
+    const entry = this.active.get(i);
+    this.active.delete(i);
+    if (!entry || !entry.el || !entry.el.parentNode) return;
+    const el = entry.el;
+    el.classList.add('leaving');
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 200);
+  }
+};
+
+// Keep --subtitle-bottom-offset in sync with the live tuner height so cues always
+// sit just above the tuner, whether expanded, collapsed, desktop, or mobile.
+function syncTunerOffsetVar() {
+  if (!tunerEl) return;
+  const h = Math.round(tunerEl.getBoundingClientRect().height);
+  document.documentElement.style.setProperty('--subtitle-bottom-offset', (h + 10) + 'px');
+}
+
 // print overlay — shown centered-upper for N seconds then fades out
 let _printTimer = null;
 function showPrintOverlay(text, durationSec) {
@@ -2396,6 +2601,8 @@ function applyEmptyCard() {
   TrackCycler.idx = -1; TrackCycler.paint();
   if (TrackCycler.timer) { clearInterval(TrackCycler.timer); TrackCycler.timer = null; }
   if (typeof FieldCycler !== 'undefined') FieldCycler.reset(-1);
+  // clear any subtitles
+  if (typeof SubtitleRunner !== 'undefined') SubtitleRunner.clearAll();
 }
 
 // ── metadata display ──
@@ -2419,6 +2626,9 @@ function applyMeta(idx) {
 
   // reset per-track runtime state + catch up timeline to current position
   TimelineRunner.reset(idx);
+
+  // subtitles — fetch (async) and let it populate; missing file is silent
+  SubtitleRunner.loadForTrack(idx);
 
   // quality buttons reflect file availability for THIS track
   updateQualityAvailability();
@@ -2685,6 +2895,8 @@ function loop() {
 
   // fire any timeline events whose time has been crossed this frame
   if (engine.playing) TimelineRunner.tick(engine.currentTime);
+  // render active subtitles (independent of timeline)
+  SubtitleRunner.tick(engine.currentTime || 0);
 
   updateSignalBars(freq);
   updateDbReadout(freq);
@@ -2707,6 +2919,154 @@ function updateDbReadout(freq) {
   const db = minDb + (avg / 255) * (maxDb - minDb);
   dbReadout.textContent = Math.round(db);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// Subtitle: sync tuner-height CSS var on load + viewport resize,
+// plus optional debug UI (enable via ?subdbg=1 in URL)
+// ══════════════════════════════════════════════════════════════════
+(function initSubtitleInfra() {
+  // keep the bottom offset in step with tuner height across resizes/orientation
+  window.addEventListener('resize', syncTunerOffsetVar);
+  if (window.ResizeObserver && tunerEl) {
+    new ResizeObserver(syncTunerOffsetVar).observe(tunerEl);
+  }
+  // first sync after layout
+  setTimeout(syncTunerOffsetVar, 0);
+
+  // Debug controls: ?subdbg=1 shows a top-left panel with sliders for track-card
+  // and subtitle. DEMO button injects 3 stacked fake cues (also auto-shown once
+  // on open so mobile previews have content without clicking).
+  const panel = $('debugPanel');
+  const params = new URLSearchParams(location.search);
+  if (!panel || !params.has('subdbg')) return;
+  panel.classList.add('open');
+
+  const closeBtn = $('debugClose');
+  if (closeBtn) closeBtn.onclick = () => panel.classList.remove('open');
+
+  // Each range either drives a CSS var (data-css) or a named JS behaviour (data-js).
+  // data-unit appends a CSS unit suffix; data-fmt="f2" formats the display value.
+  function bindRange(slider) {
+    const cssVar = slider.dataset.css;
+    const jsKey  = slider.dataset.js;
+    const unit   = slider.dataset.unit || '';
+    const fmt    = slider.dataset.fmt  || '';
+    const dvId   = 'dv-' + (cssVar || jsKey);
+    const dv     = document.getElementById(dvId);
+    const format = (n) => (fmt === 'f2' ? n.toFixed(2) : (Number.isInteger(n) ? String(n) : String(n)));
+    const apply = () => {
+      const v = parseFloat(slider.value);
+      if (dv) dv.textContent = format(v);
+      if (cssVar) {
+        document.documentElement.style.setProperty(cssVar, format(v) + unit);
+      }
+      if (jsKey === 'subSize') {
+        // print is master; subtitle auto-derives (size-5) via the derived var
+        document.documentElement.style.setProperty('--print-font-size', (v + 5) + 'px');
+      }
+    };
+    slider.addEventListener('input', apply);
+    apply();
+  }
+  panel.querySelectorAll('input[type="range"]').forEach(bindRange);
+
+  // Demo subtitles: populate the stack with sample cues so we can see them offline
+  function injectDemo() {
+    const stack = $('subtitleStack');
+    if (!stack) return;
+    stack.innerHTML = '';
+    const samples = [
+      '<b>Demo 1</b> — first subtitle line',
+      'Second <i>italic</i> line of a longer cue to check wrapping behaviour',
+      'Third — <u>underlined</u> and normal'
+    ];
+    samples.forEach(html => {
+      const el = document.createElement('div');
+      el.className = 'subtitle-line';
+      el.innerHTML = html;
+      stack.appendChild(el);
+    });
+  }
+  const btnDemo = $('subDbgToggle');
+  if (btnDemo) btnDemo.onclick = injectDemo;
+  // auto-show demos after boot finishes (Registry.init + applyEmptyCard have cleared first)
+  setTimeout(injectDemo, 1500);
+
+  // ── device / browser / resolution detector ──────────────────────────
+  function detectDevice() {
+    const ua = navigator.userAgent || '';
+    const plat = navigator.platform || '';
+    const touch = (navigator.maxTouchPoints || 0) > 0;
+    let device = 'Desktop';
+    if (/iPhone/i.test(ua))      device = 'iPhone';
+    else if (/iPad/i.test(ua))   device = 'iPad';
+    else if (/Macintosh/i.test(ua) && touch) device = 'iPad (desktop UA)';
+    else if (/Android/i.test(ua)) {
+      const m = ua.match(/Android[^;]*;\s*([^)]+?)\s*(?:Build|\))/);
+      device = 'Android' + (m ? ' · ' + m[1] : '');
+    }
+    let browser = 'Unknown';
+    if (/EdgiOS|Edg\//i.test(ua))           browser = 'Edge';
+    else if (/CriOS|Chrome\//i.test(ua))    browser = 'Chrome';
+    else if (/FxiOS|Firefox\//i.test(ua))   browser = 'Firefox';
+    else if (/Safari/i.test(ua))            browser = 'Safari';
+    const verMatch = ua.match(/(?:Version|CriOS|FxiOS|EdgiOS|Edg|Chrome|Firefox|Safari)\/([\d.]+)/);
+    const ver = verMatch ? verMatch[1] : '';
+    return { device, browser, ver, ua, plat, touch };
+  }
+  function infoLines() {
+    const d = detectDevice();
+    const vp = window.innerWidth + ' × ' + window.innerHeight;
+    const sc = screen.width + ' × ' + screen.height;
+    const dpr = window.devicePixelRatio || 1;
+    const phys = Math.round(screen.width * dpr) + ' × ' + Math.round(screen.height * dpr);
+    const orient = matchMedia('(orientation: portrait)').matches ? 'portrait' : 'landscape';
+    return [
+      'Device : ' + d.device,
+      'Browser: ' + d.browser + (d.ver ? ' ' + d.ver : ''),
+      'Viewport: ' + vp,
+      'Screen  : ' + sc + ' (phys ' + phys + ')',
+      'DPR    : ' + dpr,
+      'Orient : ' + orient,
+      'Touch  : ' + (d.touch ? 'yes' : 'no')
+    ].join('\n');
+  }
+  const infoEl = $('debugInfo');
+  const refreshInfo = () => { if (infoEl) infoEl.textContent = infoLines(); };
+  refreshInfo();
+  window.addEventListener('resize', refreshInfo);
+  window.addEventListener('orientationchange', refreshInfo);
+
+  // COPY INFO + SETTINGS — assembles a paste-ready report
+  const toast = $('dbgToast');
+  const showToast = (msg) => {
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 1600);
+  };
+  const copyBtn = $('dbgCopy');
+  if (copyBtn) copyBtn.onclick = async () => {
+    const d = detectDevice();
+    const settings = [...panel.querySelectorAll('input[type="range"]')].map(s => {
+      const label = s.previousElementSibling ? s.previousElementSibling.textContent.trim() : (s.dataset.css || s.dataset.js);
+      return '  ' + label.padEnd(12) + ' = ' + s.value + (s.dataset.unit ? s.dataset.unit : '');
+    }).join('\n');
+    const body =
+      '── Radio Debug Report ──\n' +
+      infoLines() + '\n' +
+      'UA     : ' + d.ua + '\n' +
+      '\nSettings:\n' + settings + '\n';
+    try {
+      await navigator.clipboard.writeText(body);
+      showToast('COPIED');
+    } catch (_) {
+      // Clipboard API unavailable (Safari sometimes needs user-activation). Fallback: show in a prompt.
+      try { window.prompt('Copy this report:', body); showToast('SHOWN'); }
+      catch (__) { showToast('COPY FAILED'); }
+    }
+  };
+})();
 
 // ══════════════════════════════════════════════════════════════════
 // BOOT
