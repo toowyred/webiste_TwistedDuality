@@ -282,12 +282,13 @@
     /* min-height is set by JS — the tallest vertical label across langs */
   }
 
-  /* the orange left strip IS the button — solid accent bg, dark text */
+  /* left strip IS the button — dark glass plate, accent-colored text (orange / white per theme) */
   .card-collapse {
     flex: 0 0 auto; width: var(--card-strip-w);
-    background: var(--accent);
-    border: none;
-    color: #0a1211;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: none; border-right: 1px solid var(--accent-dim);
+    color: var(--accent);
     cursor: pointer;
     writing-mode: vertical-rl;
     padding: 12px 4px;
@@ -381,8 +382,10 @@
   .tuner-handle {
     position: absolute; top: 0; left: 0; right: 0;
     height: 18px;
-    background: var(--accent);
-    color: #000;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--accent-dim);
+    color: var(--accent);
     display: flex; align-items: center; justify-content: center;
     gap: 6px;
     cursor: pointer;
@@ -392,8 +395,8 @@
     z-index: 2;
     transition: filter 0.18s ease, background 0.18s ease;
   }
-  .tuner-handle:hover { filter: brightness(1.12); }
-  .tuner-handle:focus-visible { outline: 2px solid #000; outline-offset: -4px; }
+  .tuner-handle:hover { background: rgba(0,0,0,0.75); }
+  .tuner-handle:focus-visible { outline: 1px solid var(--accent); outline-offset: -3px; }
   .tuner-chev {
     display: inline-block; line-height: 1; font-size: 11px;
     transition: transform 0.25s ease;
@@ -408,13 +411,27 @@
   .tuner.collapsed .quality,
   .tuner.collapsed .t-spacer    { display: none; }
 
-  /* SCAN first-run attention pulse — removed after first successful track load. */
+  /* SCAN first-run attention pulse — removed after first successful track load.
+     Orange theme: glow in accent color.
+     Mono theme:   glow cycles through HSL hues (border stays white via var(--accent)). */
   .tuner .tbtn.scan.attn {
     animation: scan-attn 1.6s ease-in-out infinite;
   }
   @keyframes scan-attn {
     0%, 100% { box-shadow: 0 0 0 0 var(--accent); }
     50%      { box-shadow: 0 0 18px 4px var(--accent); }
+  }
+  html[data-theme="mono"] .tuner .tbtn.scan.attn {
+    animation: scan-attn-pulse 1.6s ease-in-out infinite,
+               scan-attn-hue   4.8s linear infinite;
+  }
+  @keyframes scan-attn-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(0, 100%, 65%); }
+    50%      { box-shadow: 0 0 18px 4px hsl(0, 100%, 65%); }
+  }
+  @keyframes scan-attn-hue {
+    from { filter: hue-rotate(0deg);   }
+    to   { filter: hue-rotate(360deg); }
   }
 
   /* left: frequency display + scan */
@@ -1903,7 +1920,12 @@ const Registry = {
   mode: null,          // 'online' | 'offline'
   source: null,        // SOURCES entry that succeeded
   tracks: [],
-  globals: { cyclerTick: 4.2, printDefault: 5 },   // populated from signal.dat globals block
+  globals: {                                       // populated from signal.dat globals block
+    cyclerTick: 4.2,
+    printDefault: 5,
+    crossfadeMs: 400,         // inter-track crossfade duration (0–2000 sane)
+    interNoiseLevel: 0.06,    // low-volume radio-noise bed during the crossfade gap
+  },
   currentIdx: -1,
   quality: localStorage.getItem('td-radio-quality') || 'normal',  // 'normal' | 'highfi'
 
@@ -1925,6 +1947,14 @@ const Registry = {
         if (parsed.globals && parsed.globals.printDefault) {
           const pd = parseFloat(parsed.globals.printDefault);
           if (isFinite(pd) && pd > 0) this.globals.printDefault = pd;
+        }
+        if (parsed.globals && parsed.globals.crossfadeMs != null) {
+          const x = parseFloat(parsed.globals.crossfadeMs);
+          if (isFinite(x) && x >= 0 && x <= 2000) this.globals.crossfadeMs = x;
+        }
+        if (parsed.globals && parsed.globals.interNoiseLevel != null) {
+          const n = parseFloat(parsed.globals.interNoiseLevel);
+          if (isFinite(n) && n >= 0 && n <= 1) this.globals.interNoiseLevel = n;
         }
         this.source = src;
         this.mode = src.offline ? 'offline' : 'online';
@@ -2001,14 +2031,32 @@ const Registry = {
     return data.url;
   },
 
+  // Rolling memory of the last N played indices. SCAN + auto-advance both push here.
+  // pickRandomIdx picks from tracks NOT in this window. When the pool shrinks to 0
+  // (fewer tracks than the window size, or all recently played) the memory resets.
+  _recentPlayed: [],
+  RECENT_LIMIT: 3,
+
+  rememberPlayed(idx) {
+    if (idx < 0) return;
+    this._recentPlayed.push(idx);
+    while (this._recentPlayed.length > this.RECENT_LIMIT) this._recentPlayed.shift();
+  },
+
   pickRandomIdx() {
     if (!this.tracks.length) return -1;
     if (this.tracks.length === 1) return 0;
-    let i = this.currentIdx;
-    while (i === this.currentIdx) {
-      i = Math.floor(Math.random() * this.tracks.length);
+    // Filter out recently-played + the current one
+    const exclude = new Set(this._recentPlayed);
+    exclude.add(this.currentIdx);
+    let pool = this.tracks.map((_, i) => i).filter(i => !exclude.has(i));
+    if (!pool.length) {
+      // fewer fresh tracks than window allows → reset memory, re-pick excluding only current
+      this._recentPlayed = [];
+      pool = this.tracks.map((_, i) => i).filter(i => i !== this.currentIdx);
+      if (!pool.length) return this.currentIdx;
     }
-    return i;
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 };
 
@@ -3462,10 +3510,12 @@ function applyMeta(idx) {
 function onTrackFullyPlayed() {
   updatePlayBtn();
   const next = Registry.currentIdx + 1;
-  if (next >= 0 && next < Registry.tracks.length) {
-    loadTrack(next, { autoplay: true });
-  }
-  // else: last track — natural stop, nothing more to do
+  if (next < 0 || next >= Registry.tracks.length) return;   // last track — natural stop
+  // Low-volume noise bed covers the load-and-start gap between tracks.
+  // loadTrack's crossfade: true branch ramps audio in + noise out simultaneously.
+  try { engine.startNoise(Registry.globals.interNoiseLevel); } catch (_) {}
+  loadTrack(next, { autoplay: true, crossfade: true })
+    .then(ok => { if (!ok) try { engine.stopNoise(); } catch (_) {} });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -3565,7 +3615,14 @@ async function loadTrack(idx, options) {
     bpmDetector = new BPMDetector();
     keyDetector = new KeyDetector(engine.ctx ? engine.ctx.sampleRate : 44100);
     if (options.autoplay) {
-      await engine.play();
+      if (options.crossfade) {
+        // Caller already started a low-volume noise bed before the fetch.
+        // crossfadeToTrack ramps track-gain 0→1 and noise→0 simultaneously.
+        const fadeS = Math.max(0.05, (Registry.globals.crossfadeMs || 400) / 1000);
+        await engine.crossfadeToTrack(0, fadeS);
+      } else {
+        await engine.play();
+      }
     }
     updatePlayBtn();
     if (res && res.buffer) {
@@ -4059,6 +4116,9 @@ function updateDbReadout(freq) {
   // load codes.dat so the key-unlock panel can resolve user-typed codes
   CodesRegistry.init().catch(() => {/* ok, no codes */});
 
+  // load tracks/scan-skip.dat — extra scan-entry timestamps per track
+  ScanSkipRegistry.init().catch(() => {/* ok, no skip data */});
+
   clearInterval(dotsTimer);
   hideLoading();
 })();
@@ -4252,8 +4312,13 @@ const CodesRegistry = {
       const id = target.slice(6).trim();
       const idx = this._trackIdxForId(id);
       if (idx < 0) return false;
-      const loaded = await loadTrack(idx, { autoplay: true });
+      // If we already had a track loaded (playing or paused mid-track), crossfade with the
+      // low-noise bed. First-play from empty state just starts cleanly (no crossfade).
+      const hadTrack = Registry.currentIdx >= 0;
+      if (hadTrack) { try { engine.startNoise(Registry.globals.interNoiseLevel); } catch (_) {} }
+      const loaded = await loadTrack(idx, { autoplay: true, crossfade: hadTrack });
       ok = !!loaded;
+      if (!loaded && hadTrack) { try { engine.stopNoise(); } catch (_) {} }
       // skip(secN) — seek into the track immediately after load, and silently catch
       // up the timeline so metadata overrides apply (prints in skipped range don't fire).
       if (ok && skipSec != null && engine.mediaEl) {
