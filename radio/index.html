@@ -3640,7 +3640,17 @@ function loop() {
   const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim();
   const fillColor = getComputedStyle(document.documentElement).getPropertyValue('--fill-color').trim();
   const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  terrain.render(lineColor, fillColor, accentColor);
+  // Monochromatic theme → rainbow-cycle waveform. Hue rate follows BPM (8 beats per full
+  // cycle ≈ calm enough to feel like a fade, not a flash). Back lines drift by hueSpan°
+  // so the terrain shows a gradient from front-hue to back-hue.
+  let rainbow = null;
+  if (document.documentElement.getAttribute('data-theme') === 'mono') {
+    const bpm = (typeof bpmDetector !== 'undefined' && bpmDetector && bpmDetector.bpm > 0) ? bpmDetector.bpm : 120;
+    const secPerCycle = 8 * 60 / bpm;
+    const hue = (performance.now() / (secPerCycle * 1000) * 360) % 360;
+    rainbow = { hue, hueSpan: 90, lightness: 72 };
+  }
+  terrain.render(lineColor, fillColor, accentColor, rainbow);
 
   // UI
   const cur = engine.currentTime, dur = engine.duration;
