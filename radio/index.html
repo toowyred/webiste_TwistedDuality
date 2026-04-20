@@ -795,6 +795,75 @@
   }
   .code-go:hover, .code-go:focus-visible { filter: brightness(1.15); outline: none; }
 
+  /* 神SA — godmode toggle, appears ONLY when body.godmode-active. Japanese label is literal,
+     not translated. Shines briefly each time the code panel expands. */
+  .code-kamisa {
+    display: none;
+    font-family: 'WDXL Lubrifont', 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 1px;
+    background: rgba(244, 68, 68, 0.2); color: #ff6b6b;
+    border: 1px solid rgba(244, 68, 68, 0.5); padding: 0 10px; cursor: pointer;
+    font-weight: bold;
+    transition: filter 0.15s, background 0.2s;
+  }
+  .code-kamisa:hover { background: rgba(244, 68, 68, 0.4); color: #fff; }
+  body.godmode-active .code-kamisa { display: inline-flex; align-items: center; }
+  .code-kamisa.shining {
+    animation: kamisa-shine 0.9s ease-in-out;
+  }
+  @keyframes kamisa-shine {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 68, 68, 0); }
+    30%      { box-shadow: 0 0 18px 3px rgba(244, 68, 68, 0.95); background: rgba(244, 68, 68, 0.5); color: #fff; }
+    70%      { box-shadow: 0 0 8px  2px rgba(244, 68, 68, 0.6); }
+  }
+
+  /* Code-key glows hot red when godmode is active */
+  body.godmode-active .code-key-btn {
+    border-color: rgba(244, 68, 68, 0.7);
+    color: #ff6b6b;
+    animation: godmode-key-glow 1.6s ease-in-out infinite;
+  }
+  @keyframes godmode-key-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(244, 68, 68, 0.2); }
+    50%      { box-shadow: 0 0 14px 2px rgba(244, 68, 68, 0.85); }
+  }
+
+  /* ── godmode playback-controls overlay (centre screen, 5 buttons, 3 rows) ── */
+  .godmode-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 180;
+    align-items: center; justify-content: center;
+    pointer-events: none;   /* only the pad receives clicks; the dim area is click-through */
+  }
+  .godmode-overlay.show { display: flex; }
+  .godmode-pad {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(244, 68, 68, 0.45);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.55), 0 0 0 2px rgba(244,68,68,0.12);
+  }
+  .gm-btn {
+    font-family: inherit;
+    font-size: 14px; letter-spacing: 1px;
+    background: rgba(244, 68, 68, 0.12); color: #fff;
+    border: 1px solid rgba(244, 68, 68, 0.5);
+    padding: 12px 14px; min-width: 56px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.08s;
+  }
+  .gm-btn:hover, .gm-btn:focus-visible { background: rgba(244, 68, 68, 0.32); outline: none; }
+  .gm-btn:active { transform: scale(0.96); }
+  .gm-prev    { grid-column: 1; grid-row: 1; }
+  .gm-next    { grid-column: 2; grid-row: 1; }
+  .gm-restart { grid-column: 1 / span 2; grid-row: 2; }
+  .gm-back    { grid-column: 1; grid-row: 3; }
+  .gm-fwd     { grid-column: 2; grid-row: 3; }
+
   /* ── SRT subtitle stack — sits above the tuner, stacks up to 3 cues ── */
   :root {
     --subtitle-font-size: 13px;     /* master; print derives as (subtitle × 1.4) inline on .print-box */
@@ -1349,6 +1418,19 @@
   <div class="code-expand" id="codeExpand" aria-hidden="true">
     <input type="text" class="code-input" id="codeInput" placeholder="CODE" spellcheck="false" autocomplete="off" autocapitalize="none" translate="no">
     <button class="code-go" id="codeGo" type="button">GO</button>
+    <!-- 神SA — godmode overlay toggle. Only visible once godmode is unlocked this session. -->
+    <button class="code-kamisa" id="codeKamisa" type="button" translate="no" title="Godmode">神SA</button>
+  </div>
+</div>
+
+<!-- godmode playback-controls overlay (centre screen, 5 buttons, 3 rows) -->
+<div class="godmode-overlay" id="godmodeOverlay" aria-hidden="true">
+  <div class="godmode-pad">
+    <button class="gm-btn gm-prev"   id="gmPrev"   type="button" title="Prev track">&#9664;&#9664;</button>
+    <button class="gm-btn gm-next"   id="gmNext"   type="button" title="Next track">&#9654;&#9654;</button>
+    <button class="gm-btn gm-restart" id="gmRestart" type="button" title="Restart">&#8634;</button>
+    <button class="gm-btn gm-back"   id="gmBack"   type="button" title="Skip back">&#9664;</button>
+    <button class="gm-btn gm-fwd"    id="gmFwd"    type="button" title="Skip forward">&#9654;</button>
   </div>
 </div>
 
@@ -4338,6 +4420,127 @@ const LockedRegistry = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// GOD MODE (playback controls)
+// Unlocked via code target `godmode=playbackControls`. Spawns a centre-screen
+// pad with prev / next / restart / skip-back / skip-forward buttons. Transitions
+// are instant — no noise bed, no crossfade (神 wants no noise, he means business).
+// Skip back/forward walk scan-skip.dat entries in order for the current track;
+// prev/next walk the track list linearly (locked tracks skipped).
+// Toggle visibility by tapping the now-red code-key button.
+// Session-scoped: refresh kills it until the code is typed again.
+// ══════════════════════════════════════════════════════════════════
+const GodMode = {
+  active: false,
+  overlayVisible: false,
+
+  enable() {
+    this.active = true;
+    document.body.classList.add('godmode-active');
+    this.showOverlay();
+  },
+
+  showOverlay() {
+    this.overlayVisible = true;
+    const ov = document.getElementById('godmodeOverlay');
+    if (ov) { ov.classList.add('show'); ov.setAttribute('aria-hidden', 'false'); }
+  },
+
+  hideOverlay() {
+    this.overlayVisible = false;
+    const ov = document.getElementById('godmodeOverlay');
+    if (ov) { ov.classList.remove('show'); ov.setAttribute('aria-hidden', 'true'); }
+  },
+
+  toggleOverlay() { this.overlayVisible ? this.hideOverlay() : this.showOverlay(); },
+
+  // ── direct playback actions — no noise bed, no crossfade ──
+  async _loadInstant(idx) {
+    if (idx < 0 || idx >= Registry.tracks.length) return;
+    try { engine.stopNoise(); } catch (_) {}
+    await loadTrack(idx, { autoplay: true, crossfade: false });
+  },
+
+  prevTrack() {
+    let i = Registry.currentIdx - 1;
+    // wrap + skip locked
+    for (let n = 0; n < Registry.tracks.length; n++) {
+      if (i < 0) i = Registry.tracks.length - 1;
+      if (Registry._playable(i)) { this._loadInstant(i); return; }
+      i--;
+    }
+  },
+
+  nextTrack() {
+    let i = Registry.currentIdx + 1;
+    for (let n = 0; n < Registry.tracks.length; n++) {
+      if (i >= Registry.tracks.length) i = 0;
+      if (Registry._playable(i)) { this._loadInstant(i); return; }
+      i++;
+    }
+  },
+
+  restart() {
+    if (!engine.mediaEl) return;
+    try {
+      engine.mediaEl.currentTime = 0;
+      if (typeof TimelineRunner !== 'undefined') TimelineRunner.reset(Registry.currentIdx);
+      if (!engine.playing) engine.play();
+    } catch (_) {}
+  },
+
+  // Skip-back / -forward walk scan-skip.dat entries in ascending order.
+  // Before first entry → restart. After last entry on forward → next track.
+  _sortedSkipsForCurrent() {
+    const raw = ScanSkipRegistry.forIdx(Registry.currentIdx) || [];
+    return [...raw].sort((a, b) => a - b);
+  },
+
+  skipBack() {
+    const skips = this._sortedSkipsForCurrent();
+    const now = engine.mediaEl ? engine.mediaEl.currentTime : 0;
+    // pick the largest entry that's < (now - 1s) so a tap near an entry jumps BACK past it
+    let target = null;
+    for (const s of skips) { if (s < now - 1) target = s; }
+    if (target == null) target = 0;
+    try { engine.mediaEl.currentTime = target; if (typeof TimelineRunner !== 'undefined') TimelineRunner.catchUpTo(target); } catch (_) {}
+  },
+
+  skipForward() {
+    const skips = this._sortedSkipsForCurrent();
+    const now = engine.mediaEl ? engine.mediaEl.currentTime : 0;
+    // pick the smallest entry that's > (now + 0.5s). If none, advance to next track.
+    let target = null;
+    for (const s of skips) { if (s > now + 0.5) { target = s; break; } }
+    if (target == null) { this.nextTrack(); return; }
+    try { engine.mediaEl.currentTime = target; if (typeof TimelineRunner !== 'undefined') TimelineRunner.catchUpTo(target); } catch (_) {}
+  },
+
+  // Flash the 神SA button briefly to draw attention on every code-panel expand while active
+  flashKamisa() {
+    const btn = document.getElementById('codeKamisa');
+    if (!btn) return;
+    btn.classList.remove('shining');
+    // force reflow so the animation retriggers
+    void btn.offsetWidth;
+    btn.classList.add('shining');
+  }
+};
+
+(function initGodModeUI() {
+  const kamisa = document.getElementById('codeKamisa');
+  if (kamisa) kamisa.addEventListener('click', (e) => { e.stopPropagation(); GodMode.toggleOverlay(); });
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+  };
+  bind('gmPrev',    () => GodMode.prevTrack());
+  bind('gmNext',    () => GodMode.nextTrack());
+  bind('gmRestart', () => GodMode.restart());
+  bind('gmBack',    () => GodMode.skipBack());
+  bind('gmFwd',     () => GodMode.skipForward());
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // SCAN-SKIP REGISTRY
 // Extra entry timestamps per track for the SCAN button. Added to the random
 // 2–4s pool so each SCAN hit can drop into a curated moment (chorus/drop/etc.).
@@ -4526,6 +4729,13 @@ const CodesRegistry = {
       if (['low','lowest','high'].includes(tier) && typeof applyPerfTier === 'function') {
         applyPerfTier(tier); ok = true;
       }
+    } else {
+      // godmode=<mode>  — currently only playbackControls. Session-scoped; reset on refresh.
+      const gmMatch = target.match(/^godmode\s*=\s*(\w+)$/);
+      if (gmMatch && gmMatch[1] === 'playbackControls' && typeof GodMode !== 'undefined') {
+        GodMode.enable();
+        ok = true;
+      }
     }
 
     // print(...) — greeting message on successful unlock. Duration pulled from
@@ -4562,7 +4772,14 @@ const CodesRegistry = {
     const next = (expand == null) ? !panel.classList.contains('expanded') : !!expand;
     panel.classList.toggle('expanded', next);
     panel.querySelector('.code-expand').setAttribute('aria-hidden', next ? 'false' : 'true');
-    if (next) { input.value = ''; setTimeout(() => input.focus(), 20); }
+    if (next) {
+      input.value = '';
+      setTimeout(() => input.focus(), 20);
+      // If godmode is unlocked, flash 神SA to draw attention — user can tap it to toggle the overlay.
+      if (document.body.classList.contains('godmode-active') && typeof GodMode !== 'undefined') {
+        GodMode.flashKamisa();
+      }
+    }
   };
 
   // Show "huh?" red-shake inside the input for any failure (wrong code OR
