@@ -494,19 +494,89 @@
     to   { filter: hue-rotate(360deg); }
   }
 
-  /* HI-FI success glow — rainbow pulse that stays on while HI-FI is the active tier.
-     Re-uses the same mechanic as the SCAN first-run pulse but always hue-cycles. */
-  .tuner .tbtn.qbtn.hifi-glow {
-    animation: hifi-glow-pulse 1.8s ease-in-out infinite,
-               hifi-glow-hue   4.8s linear infinite;
+  /* ── HI-FI rainbow state ──────────────────────────────────────────
+     Theme-independent: all colors come from explicit hsl() values driven by
+     an animated custom property (--rainbow-hue) so dark_orange / golden_green
+     / mono all render the identical rainbow. The @property declaration makes
+     the custom property animatable (Chrome 85+ / FF 128+ / Safari 16.4+).
+     ───────────────────────────────────────────────────────────────── */
+  @property --rainbow-hue {
+    syntax: '<number>';
+    initial-value: 0;
+    inherits: false;
+  }
+  @keyframes rainbow-hue-cycle {
+    from { --rainbow-hue: 0; }
+    to   { --rainbow-hue: 360; }
+  }
+
+  /* HI-FI active outer rainbow glow.
+     Implementation note: we put the glow on an ::after pseudo-element so the
+     hue-cycling box-shadow lives OUTSIDE the button body — the button's own
+     .active fill (var(--accent)) stays untouched. Previously a filter:
+     hue-rotate on the button rotated the inner fill too, which looked weird
+     on orange themes. */
+  .tuner .tbtn.qbtn.hifi-glow { position: relative; }
+  .tuner .tbtn.qbtn.hifi-glow::after {
+    content: '';
+    position: absolute; inset: -2px;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: 0 0 22px 6px hsl(var(--rainbow-hue, 0), 95%, 60%);
+    animation:
+      rainbow-hue-cycle 4s linear infinite,
+      hifi-glow-pulse   1.8s ease-in-out infinite;
   }
   @keyframes hifi-glow-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(0, 100%, 65%); }
-    50%      { box-shadow: 0 0 14px 3px hsl(0, 100%, 65%); }
+    0%, 100% { opacity: 0.6; }
+    50%      { opacity: 1;   }
   }
-  @keyframes hifi-glow-hue {
-    from { filter: hue-rotate(0deg);   }
-    to   { filter: hue-rotate(360deg); }
+
+  /* WAV "SHINE" burst — fires on first successful WAV pick via .hifi-shine.
+     Uses ::before so it coexists with the steady ::after rainbow. A bigger
+     glow scales + fades out over ~1.8 s then auto-removes itself in JS on
+     animationend. */
+  .tuner .tbtn.qbtn.hifi-shine { position: relative; }
+  .tuner .tbtn.qbtn.hifi-shine::before {
+    content: '';
+    position: absolute; inset: -8px;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: 0 0 60px 22px hsl(var(--rainbow-hue, 0), 100%, 72%);
+    animation:
+      rainbow-hue-cycle 0.8s linear infinite,
+      hifi-shine-decay  1.8s ease-out forwards;
+  }
+  @keyframes hifi-shine-decay {
+    0%   { opacity: 1;   transform: scale(1.55); }
+    60%  { opacity: 0.6; transform: scale(1.15); }
+    100% { opacity: 0;   transform: scale(1);    }
+  }
+
+  /* Tuning-needle rainbow — activates only while HI-FI is the live tier.
+     Explicit hsl() values cover the mono theme (white) where filter:
+     hue-rotate on a white element wouldn't produce rainbow at all. */
+  html.hifi-active .tuner .tuning-needle {
+    animation: rainbow-hue-cycle 4s linear infinite;
+    background: hsl(var(--rainbow-hue, 0), 95%, 62%);
+    box-shadow:
+      0 0 8px  hsl(var(--rainbow-hue, 0), 95%, 62%),
+      0 0 16px hsla(var(--rainbow-hue, 0), 95%, 62%, 0.5);
+  }
+  html.hifi-active .tuner .tuning-needle::before,
+  html.hifi-active .tuner .tuning-needle::after {
+    background: hsl(var(--rainbow-hue, 0), 95%, 62%);
+  }
+
+  /* Respect reduced-motion: drop the hue cycle, keep a static pleasant tint. */
+  @media (prefers-reduced-motion: reduce) {
+    .tuner .tbtn.qbtn.hifi-glow::after,
+    .tuner .tbtn.qbtn.hifi-shine::before,
+    html.hifi-active .tuner .tuning-needle,
+    html.hifi-active .tuner .tuning-needle::before,
+    html.hifi-active .tuner .tuning-needle::after {
+      animation: none;
+    }
   }
 
   /* HI-FI slide-up popup — appears above the HI-FI button when 2+ flavours exist */
@@ -4168,7 +4238,11 @@ function setQuality(q) {
   qbtnHighfi.classList.toggle('active', q === 'highfi');
   // Rainbow glow ONLY while HI-FI is the live tier AND it's actually usable for
   // this track. Disabled (no .wav / no -high.mp3 available) → never glow.
-  qbtnHighfi.classList.toggle('hifi-glow', q === 'highfi' && !qbtnHighfi.disabled);
+  const hifiLive = q === 'highfi' && !qbtnHighfi.disabled;
+  qbtnHighfi.classList.toggle('hifi-glow', hifiLive);
+  // Drive the page-wide "HI-FI is real" signal — the tuning-needle picks this
+  // up via `html.hifi-active .tuning-needle` and cycles its own rainbow.
+  document.documentElement.classList.toggle('hifi-active', hifiLive);
 }
 function setHifiKind(kind) {
   if (kind !== 'wav' && kind !== 'mp3-320') kind = 'wav';
@@ -4240,6 +4314,51 @@ async function pickHifiKind(kind) {
   } else if (kindChanged && Registry.currentIdx >= 0) {
     await reloadCurrent();
   }
+  // WAV is materially better than 320-kbps MP3 — celebrate the pick with a
+  // bigger rainbow burst that decays into the standard hifi-glow. Only fire
+  // when the pick actually landed (live HI-FI tier, not disabled).
+  if (kind === 'wav' && Registry.quality === 'highfi' && !qbtnHighfi.disabled) {
+    fireHifiShine();
+  }
+}
+
+// Attention-grab when HI-FI becomes newly available on a fresh track. Waits
+// so the user isn't distracted before playback has a chance to stabilize
+// (buffering struggles on slow connections → shaky first few seconds).
+// Fires once per track-load, auto-cancels if:
+//   • user switched tracks before the timer landed,
+//   • HI-FI became unavailable (404-demoted / locked),
+//   • user already opted into HI-FI (nothing to advertise).
+let _hifiAvailTimer = null;
+const HIFI_AVAIL_DELAY_MS = 6000;
+function scheduleHiFiAvailableGlare() {
+  cancelHiFiAvailableGlare();
+  _hifiAvailTimer = setTimeout(() => {
+    _hifiAvailTimer = null;
+    if (document.hidden) return;
+    if (qbtnHighfi.disabled) return;
+    if (Registry.quality === 'highfi') return;
+    if (typeof triggerGlare === 'function') triggerGlare(qbtnHighfi);
+  }, HIFI_AVAIL_DELAY_MS);
+}
+function cancelHiFiAvailableGlare() {
+  if (_hifiAvailTimer) { clearTimeout(_hifiAvailTimer); _hifiAvailTimer = null; }
+}
+
+// Premium-pick burst — a big decaying rainbow flash from the ::before pseudo.
+// Class auto-clears on animationend; a safety timeout cleans up in case the
+// animation didn't fire (reduced-motion, tab hidden at moment of trigger).
+function fireHifiShine() {
+  qbtnHighfi.classList.add('hifi-shine');
+  const clear = () => qbtnHighfi.classList.remove('hifi-shine');
+  const onEnd = (e) => {
+    if (e.animationName === 'hifi-shine-decay') {
+      clear();
+      qbtnHighfi.removeEventListener('animationend', onEnd);
+    }
+  };
+  qbtnHighfi.addEventListener('animationend', onEnd);
+  setTimeout(clear, 2200);
 }
 hifiOptWav.addEventListener('click', (e) => { e.stopPropagation(); if (!hifiOptWav.disabled) pickHifiKind('wav'); });
 hifiOptMp3.addEventListener('click', (e) => { e.stopPropagation(); if (!hifiOptMp3.disabled) pickHifiKind('mp3-320'); });
@@ -5402,6 +5521,16 @@ function updateQualityAvailability() {
   }
   // Keep the popup rows in sync even if it's closed (it might be opened next click).
   if (typeof refreshHifiMenuAvailability === 'function') refreshHifiMenuAvailability();
+  // "HI-FI is now available" nudge: delayed single glare so the user finds out,
+  // but only after the first ~6 s of playback has had a chance to show whether
+  // the device + connection can handle the normal mp3 smoothly. Skips entirely
+  // when HI-FI is already the live tier (nothing new to advertise) or when
+  // this track ships no hi-fi files.
+  if (hasHighfi && Registry.quality !== 'highfi') {
+    if (typeof scheduleHiFiAvailableGlare === 'function') scheduleHiFiAvailableGlare();
+  } else {
+    if (typeof cancelHiFiAvailableGlare === 'function') cancelHiFiAvailableGlare();
+  }
 }
 
 // ── empty state: no track yet → hide all rows except Signal, show "(press SCAN)" ──
@@ -5411,7 +5540,9 @@ function applyEmptyCard() {
   // No track yet → neither quality tier has context. Disable both and kill any stale glow.
   qbtnNormal.disabled = true;
   qbtnHighfi.disabled = true;
-  qbtnHighfi.classList.remove('hifi-glow');
+  qbtnHighfi.classList.remove('hifi-glow', 'hifi-shine');
+  document.documentElement.classList.remove('hifi-active');
+  if (typeof cancelHiFiAvailableGlare === 'function') cancelHiFiAvailableGlare();
   $('m-signal').textContent = t('press-scan');
   $('m-decoder').textContent = '';
   $('m-status').textContent = '';
