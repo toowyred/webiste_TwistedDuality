@@ -2409,6 +2409,29 @@ function _normalizeFieldKey(k) {
   return k;
 }
 
+// Normalize signal.dat GLOBAL-BLOCK keys. Globals internally live on
+// Registry.globals as JS identifiers (camelCase) — this keeps dot-access working
+// throughout the codebase. The dot-namespaced forms in signal.dat map to those
+// existing identifiers so authors write the tidy form while JS stays readable.
+//
+//   cycler.tick      → cyclerTick
+//   print.default    → printDefault
+//   crossfade.ms     → crossfadeMs
+//   crossfade.noise  → interNoiseLevel
+//   teaser.sec       → teaserSec
+//
+// Legacy camelCase forms still work (they don't match the dotted rules, so they
+// pass through unchanged and hit the existing Registry.init reads directly).
+function _normalizeGlobalKey(k) {
+  if (!k) return k;
+  if (k === 'cycler.tick')     return 'cyclerTick';
+  if (k === 'print.default')   return 'printDefault';
+  if (k === 'crossfade.ms')    return 'crossfadeMs';
+  if (k === 'crossfade.noise') return 'interNoiseLevel';
+  if (k === 'teaser.sec')      return 'teaserSec';
+  return k;
+}
+
 function parseSignalDat(text) {
   const blocks = text.split(/={5,}/).map(b => b.trim()).filter(b => b);
   const tracks = [];
@@ -2482,7 +2505,9 @@ function parseSignalDat(text) {
       tracks.push({ files, meta, timeline });
     } else {
       // no track content — promote plain key=value lines to globals
-      Object.assign(globals, meta);
+      // Normalize dotted global keys to the JS camelCase identifiers that
+      // Registry.init reads. Legacy camelCase passes through unchanged.
+      for (const k in meta) globals[_normalizeGlobalKey(k)] = meta[k];
     }
   }
   return { tracks, globals };
