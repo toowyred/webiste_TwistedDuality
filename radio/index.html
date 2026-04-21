@@ -579,6 +579,21 @@
     }
   }
 
+  /* ── Background-tab performance guard ────────────────────────────
+     Android / desktop browsers keep AUDIO playing when the tab is hidden (via
+     the <audio> element + MediaSession) but CSS animations, glow pulses,
+     rainbow cycles, and glare sweeps keep burning CPU + battery + thermal
+     budget even though nobody's looking. Pause every CSS animation wholesale
+     while hidden; resume seamlessly on visibility change (animations pick up
+     from the exact frame they paused on). The RAF-driven canvas visualizer
+     skips its own heavy render path in JS (see loop()). */
+  html.tab-hidden *,
+  html.tab-hidden *::before,
+  html.tab-hidden *::after {
+    animation-play-state: paused !important;
+    transition: none !important;
+  }
+
   /* HI-FI slide-up popup — appears above the HI-FI button when 2+ flavours exist */
   .tuner .hifi-wrap {
     position: relative;
@@ -3777,14 +3792,29 @@ const tunerEl = $('tuner'), tunerHandle = $('tunerHandle');
 // Signed URLs live 90s; if the user backgrounded the tab for a while, any cached
 // tokens are probably expired or about to expire — a fresh /sign call is cheap
 // and dodges the race that ended in the Rickroll-mid-session bug.
+//
+// Same listener also flips `html.tab-hidden` — the performance guard that
+// blanket-pauses CSS animations while the tab isn't visible. The RAF loop
+// reads `document.hidden` directly and skips its heavy visual block too.
 let _hiddenAt = 0;
+function _syncHiddenClass() {
+  document.documentElement.classList.toggle('tab-hidden', document.hidden);
+}
+_syncHiddenClass();
 document.addEventListener('visibilitychange', () => {
+  _syncHiddenClass();
   if (document.visibilityState === 'hidden') { _hiddenAt = Date.now(); return; }
   if (_hiddenAt && Date.now() - _hiddenAt > 30_000) {
     if (typeof Registry !== 'undefined' && Registry._signCache) {
       Registry._signCache = Object.create(null);
       console.log('[radio] tab resumed after ' + Math.round((Date.now() - _hiddenAt)/1000) + 's hidden — signed-URL cache cleared');
     }
+  }
+  // Fast-forward runner cursors past anything that would have fired while
+  // hidden, so returning to the tab doesn't flash a stale print / replay
+  // catching-up events. TimelineRunner.catchUpTo also advances SrtPrintRunner.
+  if (typeof TimelineRunner !== 'undefined' && typeof engine !== 'undefined' && engine.currentTime >= 0) {
+    try { TimelineRunner.catchUpTo(engine.currentTime); } catch (_) {}
   }
   _hiddenAt = 0;
 });
@@ -5452,6 +5482,11 @@ setTimeout(syncPrintImgMaxH, 0);
 // durationSec null/undefined/≤0 → fall back to Registry.globals.printDefault (default 5).
 let _printTimer = null;
 function showPrintOverlay(text, durationSec) {
+  // Tab hidden → no point painting an ephemeral overlay nobody can see. The
+  // timeline/SrtPrint cursors still advance through their events (silently)
+  // so this print is simply skipped; any prints that land while visible
+  // render normally.
+  if (document.hidden) return;
   const ov = $('printOverlay'); const box = $('printBox');
   if (!ov || !box) return;
   // Always route through renderPrintText — ruby tokens, newlines, and <img>
@@ -6013,71 +6048,88 @@ function maybeUpdateMediaPosition() {
 }
 function loop() {
   requestAnimationFrame(loop);
-  const freq = engine.getFrequency();
-  if (freq && engine.playing) {
-    bpmDetector.process(freq);
-    const b = bpmDetector.getBeatFlag(engine.currentTime);
-    if (b > _pendingBeat) _pendingBeat = b;
-    if (keyDetector) keyDetector.process(freq, CFG.fftSize);
-  }
-  terrain.pushFrequency(freq, _pendingBeat);
-  if (terrain.frameCount % CFG.pushEvery === 0) _pendingBeat = 0;
+  // ── Background-tab short-circuit ─────────────────────────────────
+  // Skip every visual path (analyser reads, canvas render, DOM writes for
+  // progress + BPM/KEY, subtitle stack, signal bars, dB readout) when the
+  // tab isn't visible. CSS animations are already paused via html.tab-hidden.
+  // What DOES run while hidden: timeline events (metadata swaps + silent
+  // print catch-up), the locked-track glitch check, the silent-outro
+  // choreography, and MediaSession position — everything audio-critical.
+  const hidden = document.hidden;
 
-  const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim();
-  const fillColor = getComputedStyle(document.documentElement).getPropertyValue('--fill-color').trim();
-  const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
-  // Monochromatic theme → rainbow-cycle waveform. Hue rate follows BPM (8 beats per full
-  // cycle ≈ calm enough to feel like a fade, not a flash). Back lines drift by hueSpan°
-  // so the terrain shows a gradient from front-hue to back-hue.
-  let rainbow = null;
-  if (document.documentElement.getAttribute('data-theme') === 'mono') {
-    const bpm = (typeof bpmDetector !== 'undefined' && bpmDetector && bpmDetector.bpm > 0) ? bpmDetector.bpm : 120;
-    const secPerCycle = 8 * 60 / bpm;
-    const hue = (performance.now() / (secPerCycle * 1000) * 360) % 360;
-    rainbow = { hue, hueSpan: 90, lightness: 72 };
-  }
-  terrain.render(lineColor, fillColor, accentColor, rainbow);
+  if (!hidden) {
+    const freq = engine.getFrequency();
+    if (freq && engine.playing) {
+      bpmDetector.process(freq);
+      const b = bpmDetector.getBeatFlag(engine.currentTime);
+      if (b > _pendingBeat) _pendingBeat = b;
+      if (keyDetector) keyDetector.process(freq, CFG.fftSize);
+    }
+    terrain.pushFrequency(freq, _pendingBeat);
+    if (terrain.frameCount % CFG.pushEvery === 0) _pendingBeat = 0;
 
-  // UI
-  const cur = engine.currentTime, dur = engine.duration;
-  // start= locked-intro overlay (hatched grey block at the left of the tuning bar)
-  if (tuningLock) {
-    const startSec = Registry.startFor ? Registry.startFor(Registry.currentIdx) : 0;
-    if (startSec > 0 && dur > 0) {
-      const lockPct = Math.min(1, startSec / dur) * 100;
-      tuningLock.style.display = 'block';
-      tuningLock.style.width = lockPct + '%';
-    } else {
-      tuningLock.style.display = 'none';
+    const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line-color').trim();
+    const fillColor = getComputedStyle(document.documentElement).getPropertyValue('--fill-color').trim();
+    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+    // Monochromatic theme → rainbow-cycle waveform. Hue rate follows BPM (8 beats per full
+    // cycle ≈ calm enough to feel like a fade, not a flash). Back lines drift by hueSpan°
+    // so the terrain shows a gradient from front-hue to back-hue.
+    let rainbow = null;
+    if (document.documentElement.getAttribute('data-theme') === 'mono') {
+      const bpm = (typeof bpmDetector !== 'undefined' && bpmDetector && bpmDetector.bpm > 0) ? bpmDetector.bpm : 120;
+      const secPerCycle = 8 * 60 / bpm;
+      const hue = (performance.now() / (secPerCycle * 1000) * 360) % 360;
+      rainbow = { hue, hueSpan: 90, lightness: 72 };
     }
-  }
-  if (dur > 0) {
-    const pct = cur / dur;
-    tuningProg.style.width = (pct * 100) + '%';
-    tuningNeedle.style.left = (pct * 100) + '%';
-    // Collapsed tuner → time remaining ("-MM:SS"); expanded → elapsed / total
-    if (tunerEl && tunerEl.classList.contains('collapsed')) {
-      trackTime.textContent = '-' + fmt(Math.max(0, dur - cur));
-    } else {
-      trackTime.textContent = fmt(cur) + ' / ' + fmt(dur);
+    terrain.render(lineColor, fillColor, accentColor, rainbow);
+
+    // UI
+    const cur = engine.currentTime, dur = engine.duration;
+    // start= locked-intro overlay (hatched grey block at the left of the tuning bar)
+    if (tuningLock) {
+      const startSec = Registry.startFor ? Registry.startFor(Registry.currentIdx) : 0;
+      if (startSec > 0 && dur > 0) {
+        const lockPct = Math.min(1, startSec / dur) * 100;
+        tuningLock.style.display = 'block';
+        tuningLock.style.width = lockPct + '%';
+      } else {
+        tuningLock.style.display = 'none';
+      }
     }
-  } else {
-    tuningProg.style.width = '0%';
-    tuningNeedle.style.left = '0%';
-    trackTime.textContent = (tunerEl && tunerEl.classList.contains('collapsed')) ? '-0:00' : '0:00 / 0:00';
+    if (dur > 0) {
+      const pct = cur / dur;
+      tuningProg.style.width = (pct * 100) + '%';
+      tuningNeedle.style.left = (pct * 100) + '%';
+      // Collapsed tuner → time remaining ("-MM:SS"); expanded → elapsed / total
+      if (tunerEl && tunerEl.classList.contains('collapsed')) {
+        trackTime.textContent = '-' + fmt(Math.max(0, dur - cur));
+      } else {
+        trackTime.textContent = fmt(cur) + ' / ' + fmt(dur);
+      }
+    } else {
+      tuningProg.style.width = '0%';
+      tuningNeedle.style.left = '0%';
+      trackTime.textContent = (tunerEl && tunerEl.classList.contains('collapsed')) ? '-0:00' : '0:00 / 0:00';
+    }
+    if (bpmDetector.bpm > 0) bpmVal.textContent = bpmDetector.bpm;
+    if (keyDetector && keyDetector.key) paintKey(keyDetector.key);
+
+    // Subtitle stack render — strictly visual; skip when hidden.
+    SubtitleRunner.tick(engine.currentTime || 0);
+    // FPS watchdog — meaningless readings when RAF is throttled by hidden tab.
+    perfWatchTick();
+    // Signal bars + dB readout — pure DOM writes driven by `freq`, which is
+    // only fetched in this visible branch. Keep them co-located here so the
+    // hidden-path doesn't reach for an undefined `freq`.
+    updateSignalBars(freq);
+    updateDbReadout(freq);
   }
-  if (bpmDetector.bpm > 0) bpmVal.textContent = bpmDetector.bpm;
-  if (keyDetector && keyDetector.key) paintKey(keyDetector.key);
 
   // fire any timeline events whose time has been crossed this frame
   if (engine.playing) TimelineRunner.tick(engine.currentTime);
   // SRT.print cues — parallel channel, also gated on playing so seeks/pauses
   // don't spam the overlay while the cursor is catching up.
   if (engine.playing && typeof SrtPrintRunner !== 'undefined') SrtPrintRunner.tick(engine.currentTime);
-  // render active subtitles (independent of timeline)
-  SubtitleRunner.tick(engine.currentTime || 0);
-  // watch FPS while playing — auto-demote perf tier if the device can't keep up
-  perfWatchTick();
   // glitch sanity: if the currently-playing track is no longer playable (lock just
   // applied / time gate expired / etc.), jump forward. Rare but prevents leaks.
   if (engine.playing && typeof LockedRegistry !== 'undefined' && !LockedRegistry.isPlayable(Registry.currentIdx)) {
@@ -6158,10 +6210,9 @@ function loop() {
     }
   }
 
-  updateSignalBars(freq);
-  updateDbReadout(freq);
-
   // update MediaSession position-state ~twice per second (lock-screen scrubber)
+  // — keeps running in hidden state too; it's what Android's lock-screen UI
+  // polls for the scrubber thumb while audio plays in the background.
   maybeUpdateMediaPosition();
 }
 loop();
