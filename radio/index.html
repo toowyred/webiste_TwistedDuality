@@ -3289,6 +3289,8 @@ document.querySelectorAll('.bar-menu [data-lang-btn]').forEach(b => {
 
 // ── play/pause (lazy-loads on first click since we defer fetch until user gesture) ──
 btnPlay.addEventListener('click', async () => {
+  // Real fetch takes precedence — kill any in-flight pre-buffer.
+  if (typeof PreBuffer !== 'undefined') PreBuffer.cancel();
   engine.init();
   await engine.resume();
   if (!engine.buffer) {
@@ -3511,6 +3513,213 @@ async function refreshMetadataWatchdog() {
     if (typeof updateQualityAvailability === 'function') updateQualityAvailability();
   }
 }
+
+// ══════════════════════════════════════════════════════════════════
+// PRE-BUFFER + OFFLINE BPM/KEY PRE-ANALYSIS
+// ──────────────────────────────────────────────────────────────────
+// On boot we pre-pick a random track. If the visitor idles ≥5 s without hitting
+// SCAN/PLAY, we:
+//   1. fetch ~2 MB (first ~10 s of audio — plenty even for lossless WAV) using
+//      HTTP Range so the CDN + browser cache + signed-URL cache are already warm
+//      by the time the user does click SCAN.
+//   2. decode that partial file offline and run FFT-based BPM + key detection
+//      against it, caching the result for that idx.
+// When the first SCAN fires, we use the pre-picked currentIdx (not a fresh random
+// pick) so the very track the user hears is the one we warmed up for them.
+// Cancelled on any SCAN/PLAY button press — bandwidth belongs to the real fetch
+// at that point.
+// ══════════════════════════════════════════════════════════════════
+
+// Cooley-Tukey radix-2 in-place FFT. Operates on paired real/imag Float32Arrays
+// whose length is a power of 2. Used only for offline pre-analysis.
+function _fftRadix2(real, imag) {
+  const n = real.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      let t = real[i]; real[i] = real[j]; real[j] = t;
+      t = imag[i]; imag[i] = imag[j]; imag[j] = t;
+    }
+  }
+  for (let size = 2; size <= n; size <<= 1) {
+    const half = size >> 1, ang = -2 * Math.PI / size;
+    const wR = Math.cos(ang), wI = Math.sin(ang);
+    for (let i = 0; i < n; i += size) {
+      let cR = 1, cI = 0;
+      for (let k = 0; k < half; k++) {
+        const a = i + k, b = a + half;
+        const tR = cR * real[b] - cI * imag[b];
+        const tI = cR * imag[b] + cI * real[b];
+        real[b] = real[a] - tR; imag[b] = imag[a] - tI;
+        real[a] += tR;          imag[a] += tI;
+        const nR = cR * wR - cI * wI;
+        cI = cR * wI + cI * wR;  cR = nR;
+      }
+    }
+  }
+}
+
+const PreBuffer = {
+  idx: -1,           // which track we pre-picked
+  timer: null,       // 5-s idle timer
+  abort: null,       // AbortController for the range fetch
+  blob: null,        // partial audio blob (first ~10 s)
+  analyzed: false,   // true once BPM/Key pre-analysis has a result
+  bpm: 0, key: '',
+
+  schedule() {
+    this.cancel();
+    if (Registry.currentIdx < 0) return;
+    this.idx = Registry.currentIdx;
+    this.timer = setTimeout(() => this._run().catch(() => {/* silent */}), 5000);
+  },
+
+  cancel() {
+    if (this.timer) { clearTimeout(this.timer); this.timer = null; }
+    if (this.abort) { try { this.abort.abort(); } catch (_) {} this.abort = null; }
+  },
+
+  // Seed the live detectors with cached values the moment the pre-picked track
+  // actually starts playing — user sees BPM / KEY right away instead of dashes
+  // until the live analysis converges (~5 s of real playback).
+  seedLive(idx) {
+    if (idx !== this.idx || !this.analyzed) return;
+    try {
+      if (this.bpm > 0 && typeof bpmDetector !== 'undefined' && bpmDetector) bpmDetector.bpm = this.bpm;
+      if (this.key    && typeof keyDetector !== 'undefined' && keyDetector) keyDetector.key = this.key;
+      if (this.bpm > 0 && typeof bpmVal !== 'undefined' && bpmVal) bpmVal.textContent = this.bpm;
+      if (this.key    && typeof keyVal !== 'undefined' && keyVal) keyVal.textContent = this.key;
+    } catch (_) {}
+  },
+
+  async _run() {
+    const idx = this.idx;
+    if (idx < 0) return;
+    // Bail if the user already started a real fetch (engine.buffer is truthy the moment
+    // SCAN/PLAY's loadUrl has assigned a blob to <audio>).
+    if (engine && engine.buffer) return;
+
+    const rawUrl = Registry.urlFor(idx);
+    if (!rawUrl) return;
+    let signedUrl;
+    try { signedUrl = await Registry.signUrl(rawUrl); } catch (_) { return; }
+    if (engine && engine.buffer) return;
+
+    // Budget: 2 MB covers ~10 s of lossless WAV (1411 kbps) and ~50 s of 320 kbps MP3.
+    const BUDGET_BYTES = 2 * 1024 * 1024;
+    const ctrl = new AbortController();
+    this.abort = ctrl;
+    let blob = null;
+    try {
+      const res = await fetch(signedUrl, {
+        signal: ctrl.signal,
+        cache: 'default',
+        headers: { 'Range': 'bytes=0-' + (BUDGET_BYTES - 1) },
+      });
+      // 206 = range satisfied; 200 = server served full body (shorter than budget)
+      if (!res.ok && res.status !== 206) return;
+      const reader = res.body && res.body.getReader ? res.body.getReader() : null;
+      if (!reader) return;
+      const chunks = []; let got = 0;
+      while (true) {
+        if (engine && engine.buffer) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); got += value.length;
+        if (got >= BUDGET_BYTES) break;
+      }
+      try { reader.cancel(); } catch (_) {}
+      const type = res.headers.get('content-type') || 'audio/mpeg';
+      blob = new Blob(chunks, { type });
+    } catch (_) {
+      return;   // AbortError or network — silent
+    } finally {
+      this.abort = null;
+    }
+    this.blob = blob;
+    if (!blob || (engine && engine.buffer)) return;
+
+    // ── offline BPM + key analysis on the partial audio ────────────────
+    try { await this._analyze(blob); } catch (_) { /* decode failed — normal for mid-frame partials */ }
+  },
+
+  async _analyze(blob) {
+    const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    const LiveCtx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx || !LiveCtx) return;
+
+    // Decode via a throwaway online context (decodeAudioData requires an AudioContext).
+    const ab = await blob.arrayBuffer();
+    const tmp = new LiveCtx();
+    let audio;
+    try { audio = await tmp.decodeAudioData(ab); }
+    catch (_) { try { tmp.close(); } catch (__) {} return; }
+    try { tmp.close(); } catch (_) {}
+    if (engine && engine.buffer) return;
+
+    const sr = audio.sampleRate;
+    const ch0 = audio.getChannelData(0);
+    const ch1 = audio.numberOfChannels > 1 ? audio.getChannelData(1) : null;
+
+    // Analysis parameters — mirror the live engine's fftSize to match detector tuning.
+    const FFT = (typeof CFG !== 'undefined' && CFG.fftSize) ? CFG.fftSize : 2048;
+    const HOP = FFT >> 2;                       // 75% overlap
+    const nBins = FFT >> 1;
+    const real = new Float32Array(FFT);
+    const imag = new Float32Array(FFT);
+    const byteOut = new Uint8Array(nBins);
+    // Hann window — matches AnalyserNode closely enough for our detectors.
+    const win = new Float32Array(FFT);
+    for (let i = 0; i < FFT; i++) win[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / (FFT - 1)));
+    // AnalyserNode byte-mapping: magnitudeDB → [minDb, maxDb] → [0, 255]
+    const minDb = -100, maxDb = -30, dbRange = maxDb - minDb;
+
+    const bpm = new BPMDetector();
+    const key = new KeyDetector(sr);
+
+    // Process frames; yield to the event loop periodically so the page stays responsive.
+    const total = ch0.length;
+    let framesSinceYield = 0;
+    for (let pos = 0; pos + FFT <= total; pos += HOP) {
+      if (engine && engine.buffer) return;
+      // mix to mono + apply window
+      if (ch1) {
+        for (let i = 0; i < FFT; i++) real[i] = 0.5 * (ch0[pos + i] + ch1[pos + i]) * win[i];
+      } else {
+        for (let i = 0; i < FFT; i++) real[i] = ch0[pos + i] * win[i];
+      }
+      imag.fill(0);
+      _fftRadix2(real, imag);
+      // magnitudes → byte-scaled like AnalyserNode
+      for (let i = 0; i < nBins; i++) {
+        const mag = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]) / nBins;
+        const db = 20 * Math.log10(mag + 1e-10);
+        const v  = (db - minDb) / dbRange;
+        byteOut[i] = v <= 0 ? 0 : v >= 1 ? 255 : (v * 255) | 0;
+      }
+      bpm.process(byteOut);
+      key.process(byteOut, FFT);
+      if (++framesSinceYield >= 40) {
+        framesSinceYield = 0;
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    this.bpm = bpm.bpm || 0;
+    this.key = key.key || '';
+    this.analyzed = !!(this.bpm || this.key);
+
+    // If the pre-picked track is still queued (hasn't started playing), reflect the
+    // pre-analysis directly in the tuner so the user sees BPM + KEY before SCAN.
+    if (this.analyzed && Registry.currentIdx === this.idx && (!engine || !engine.buffer)) {
+      try {
+        if (this.bpm > 0 && bpmVal) bpmVal.textContent = this.bpm;
+        if (this.key    && keyVal) keyVal.textContent = this.key;
+      } catch (_) {}
+    }
+  }
+};
 
 // ══════════════════════════════════════════════════════════════════
 // LIVE STATE + TIMELINE RUNNER
@@ -4079,6 +4288,10 @@ function onTrackFullyPlayed() {
     if (typeof toast === 'function') toast(t('corrupted'));
     return;
   }
+  // Bandwidth safeguard: always demote to NORMAL at track boundaries. Keeps the
+  // player from choking when the next track has no .wav / -high.mp3, and saves
+  // bandwidth even when it does — the user can re-pick HI-FI any time they want.
+  if (Registry.quality !== 'normal') setQuality('normal');
   try { engine.startNoise(Registry.globals.interNoiseLevel); } catch (_) {}
   loadTrack(next, { autoplay: true, crossfade: true })
     .then(ok => { if (!ok) try { engine.stopNoise(); } catch (_) {} });
@@ -4189,6 +4402,9 @@ async function loadTrack(idx, options) {
     // fresh analyzers for new track
     bpmDetector = new BPMDetector();
     keyDetector = new KeyDetector(engine.ctx ? engine.ctx.sampleRate : 44100);
+    // If this idx is the one we pre-analysed at boot, warm-start the detectors
+    // with cached BPM/KEY so the tuner shows real values immediately.
+    if (typeof PreBuffer !== 'undefined') PreBuffer.seedLive(idx);
     // start= honoured on every load — track begins at the protected offset, never 0.
     const startSec = Registry.startFor(idx);
     if (options.autoplay) {
@@ -4231,8 +4447,17 @@ btnScan.addEventListener('click', async () => {
   _scanInFlight = true;
   btnScan.classList.add('active');
 
-  // pick random (not current). May return -1 if every track is locked-and-not-unlocked.
-  const nextIdx = Registry.pickRandomIdx();
+  // Real fetch owns the bandwidth from here on — cancel any in-flight pre-buffer.
+  if (typeof PreBuffer !== 'undefined') PreBuffer.cancel();
+
+  // First SCAN ever: play the track the Player already pre-picked at boot (the one
+  // we may have pre-buffered + pre-analysed). Subsequent SCANs pick a fresh random.
+  let nextIdx;
+  if (!engine.buffer && Registry.currentIdx >= 0 && Registry._playable(Registry.currentIdx)) {
+    nextIdx = Registry.currentIdx;
+  } else {
+    nextIdx = Registry.pickRandomIdx();
+  }
   if (nextIdx < 0) {
     toast(t('corrupted'));
     btnScan.classList.remove('active');
@@ -4283,6 +4508,9 @@ btnScan.addEventListener('click', async () => {
     applyMeta(nextIdx);
     bpmDetector = new BPMDetector();
     keyDetector = new KeyDetector(engine.ctx.sampleRate);
+    // If this track is the one we pre-analysed during the 5-s idle window, seed
+    // the live detectors so BPM/KEY show instantly instead of dashing for 5-6 s.
+    if (typeof PreBuffer !== 'undefined') PreBuffer.seedLive(nextIdx);
     // Randomize playback start 2–4s in — discourages full-file ripping via SCAN.
     // Timeline events (signal/decoder/etc. FIELD(secN)=value) in the skipped range are
     // applied silently via catchUpTo; print() overlays in that range are suppressed.
@@ -4725,6 +4953,9 @@ function updateDbReadout(freq) {
   // HTTP cache (cache: 'default' above) so replays start fast.
   if (Registry.tracks.length) {
     Registry.currentIdx = Registry.pickRandomIdx();
+    // 5-s idle → pre-buffer ~10 s of this track + run offline BPM/KEY pre-analysis.
+    // Cancelled on any SCAN/PLAY press so bandwidth goes to the real fetch.
+    if (typeof PreBuffer !== 'undefined') PreBuffer.schedule();
   }
   // start in collapsed + empty state; PLAY gated until the user SCANs
   trackCard.classList.add('collapsed');
