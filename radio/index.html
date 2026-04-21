@@ -6193,6 +6193,22 @@ async function reloadCurrent() {
 
 async function loadTrack(idx, options) {
   options = options || {};
+  // Fail-safe: if this track was synthesized as an "unknown" orphan (created
+  // at boot by Registry.synthesizeOrphansFromRhythm when cf-rhythm.dat had a
+  // track id that the currently-loaded block didn't know about), load the
+  // track's real block NOW so its metadata gets upgraded in place via
+  // BlockRegistry._apply before applyMeta reads it. Without this, SCAN-picked
+  // synthetic tracks play with every card field stuck on "unknown" even
+  // though the real signal.dat metadata is just one shard fetch away.
+  if (Registry.usingBlocks && typeof BlockRegistry !== 'undefined') {
+    const tr = Registry.tracks[idx];
+    if (tr && tr.meta && tr.meta._synthetic) {
+      const blockNum = BlockRegistry.blockOfTrackIdx(idx);
+      if (blockNum && !BlockRegistry.loaded.has(blockNum)) {
+        try { await BlockRegistry.loadBlock(blockNum); } catch (_) {}
+      }
+    }
+  }
   const rawUrl = Registry.urlFor(idx);
   if (!rawUrl && !options.preBlob) { toast(t('no-signal')); StreamRate.bad(); return false; }
   // reveal metadata immediately on user gesture, before the fetch
