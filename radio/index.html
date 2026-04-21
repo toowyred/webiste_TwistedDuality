@@ -2710,39 +2710,97 @@ const Registry = {
   //   'mp3-320' → match *-high.mp3 (320 kbps mp3)
   hifiKind: localStorage.getItem('td-radio-hifi-kind') || 'wav',
 
+  // Mirror any recognized globals from a parsed block into Registry.globals.
+  // Used by the legacy signal.dat flow AND the blocks/globals.dat flow below.
+  _applyGlobals(g) {
+    if (!g) return;
+    if (g.cyclerTick) {
+      const ct = parseFloat(g.cyclerTick);
+      if (isFinite(ct) && ct > 0) this.globals.cyclerTick = ct;
+    }
+    if (g.printDefault) {
+      const pd = parseFloat(g.printDefault);
+      if (isFinite(pd) && pd > 0) this.globals.printDefault = pd;
+    }
+    if (g.crossfadeMs != null) {
+      const x = parseFloat(g.crossfadeMs);
+      if (isFinite(x) && x >= 0 && x <= 2000) this.globals.crossfadeMs = x;
+    }
+    if (g.interNoiseLevel != null) {
+      const n = parseFloat(g.interNoiseLevel);
+      if (isFinite(n) && n >= 0 && n <= 1) this.globals.interNoiseLevel = n;
+    }
+    if (g.teaserSec != null) {
+      const ts = parseFloat(g.teaserSec);
+      if (isFinite(ts) && ts >= 0.5 && ts <= 30) this.globals.teaserSec = ts;
+    }
+  },
+
   async init() {
     setLoadStatus('contacting');
     for (const src of SOURCES) {
       try {
+        // ── Try the BLOCKS tree first in this tier. blocks/index.dat tells us
+        //    how the library is sharded; if present we load just one random
+        //    block + globals, not the whole cf-signal.dat. Missing → fall
+        //    through to the legacy path in this same tier (zero-break for
+        //    anyone who hasn't run build-blocks.py yet).
+        const blocksBase   = src.signal.replace(/[^/]+$/, 'blocks/');
+        const blocksIdxUrl = blocksBase + 'index.dat';
+        let blocksIdxText = null;
+        try {
+          const r = await fetch(blocksIdxUrl, { cache: 'no-cache' });
+          if (r.ok) blocksIdxText = await r.text();
+        } catch (_) { /* network / offline / 404 — silent fall-through */ }
+
+        if (blocksIdxText && typeof BlockRegistry !== 'undefined') {
+          const manifest = BlockRegistry.parseIndex(blocksIdxText);
+          if (manifest.length) {
+            BlockRegistry.manifest   = manifest;
+            BlockRegistry.blocksBase = blocksBase;
+            // Globals live separately in blocks/globals.dat.
+            try {
+              const gr = await fetch(blocksBase + 'globals.dat', { cache: 'no-cache' });
+              if (gr.ok) {
+                const gt = await gr.text();
+                const pg = parseSignalDat(gt);
+                this._applyGlobals(pg.globals);
+              }
+            } catch (_) { /* globals optional */ }
+            // Pick one block and load its shards. Registry.tracks grows as
+            // additional blocks load on demand (wildcard SCAN / code unlock).
+            const pickEntry = manifest[Math.floor(Math.random() * manifest.length)];
+            await BlockRegistry.loadBlock(pickEntry.num);
+            if (!this.tracks.length) {
+              // Block shard was empty — treat tier as failed and try next.
+              throw new Error(src.id + ' blocks empty');
+            }
+            this.source = src;
+            this.mode = src.offline ? 'offline' : 'online';
+            this.usingBlocks = true;
+            console.log(
+              '[radio] blocks mode via tier:', src.id,
+              '— ' + manifest.length + ' block(s) available, starting on b' + String(pickEntry.num).padStart(2, '0'),
+              '(' + this.tracks.length + ' track' + (this.tracks.length === 1 ? '' : 's') + ' loaded, cyclerTick=' + this.globals.cyclerTick + 's)'
+            );
+            if (src.offline) toast(t('offline-mode'), 3000);
+            return;
+          }
+        }
+
+        // ── Legacy cf-signal.dat flow (unchanged from v1). Kicks in when
+        //    blocks/index.dat doesn't exist in this tier — i.e. you haven't
+        //    run build-blocks.py, or the blocks tree hasn't been uploaded yet.
         const res = await fetch(src.signal, { cache: 'no-cache' });
         if (!res.ok) throw new Error(src.id + ' signal ' + res.status);
         const text = await res.text();
         const parsed = parseSignalDat(text);
         if (!parsed.tracks.length) throw new Error(src.id + ' signal empty');
         this.tracks = parsed.tracks;
-        // merge globals (known numeric key: cyclerTick). Preserve defaults for missing keys.
-        if (parsed.globals && parsed.globals.cyclerTick) {
-          const ct = parseFloat(parsed.globals.cyclerTick);
-          if (isFinite(ct) && ct > 0) this.globals.cyclerTick = ct;
-        }
-        if (parsed.globals && parsed.globals.printDefault) {
-          const pd = parseFloat(parsed.globals.printDefault);
-          if (isFinite(pd) && pd > 0) this.globals.printDefault = pd;
-        }
-        if (parsed.globals && parsed.globals.crossfadeMs != null) {
-          const x = parseFloat(parsed.globals.crossfadeMs);
-          if (isFinite(x) && x >= 0 && x <= 2000) this.globals.crossfadeMs = x;
-        }
-        if (parsed.globals && parsed.globals.interNoiseLevel != null) {
-          const n = parseFloat(parsed.globals.interNoiseLevel);
-          if (isFinite(n) && n >= 0 && n <= 1) this.globals.interNoiseLevel = n;
-        }
-        if (parsed.globals && parsed.globals.teaserSec != null) {
-          const ts = parseFloat(parsed.globals.teaserSec);
-          if (isFinite(ts) && ts >= 0.5 && ts <= 30) this.globals.teaserSec = ts;
-        }
+        this._applyGlobals(parsed.globals);
         this.source = src;
         this.mode = src.offline ? 'offline' : 'online';
+        this.usingBlocks = false;
         console.log('[radio] signal loaded from tier:', src.id, '(' + parsed.tracks.length + ' track' + (parsed.tracks.length === 1 ? '' : 's') + ', cyclerTick=' + this.globals.cyclerTick + 's)');
         if (src.offline) toast(t('offline-mode'), 3000);
         return;
@@ -2808,6 +2866,56 @@ const Registry = {
     const t = this.tracks[idx];
     const s = t && t.meta && t.meta.startSec;
     return (typeof s === 'number' && isFinite(s) && s > 0) ? s : 0;
+  },
+
+  // Fail-safe: synthesize track records for audio files known to cf-rhythm.dat
+  // but missing from cf-signal.dat. Scenario — author uploaded a new audio file
+  // and re-ran analyze-beats.py (which hits the folder directly and updates
+  // cf-rhythm.dat automatically) but forgot to update + upload the hand-edited
+  // cf-signal.dat. Without this fallback the audio sits on R2 serving 200 OK
+  // but the player can't reach it because Registry.tracks has no index.
+  //
+  // Synthetic tracks carry:
+  //   files     = [<id>-normal.mp3]   (assumed; the analyzer-priority list is
+  //               WAV > -high.mp3 > -normal.mp3, so at minimum a -normal.mp3
+  //               is expected to exist for any id in rhythm data)
+  //   meta      = all fields = 'unknown' so the card + cycler render sanely
+  //               and access/status styling falls into the red "unknown" path
+  //   timeline  = []                   (nothing to react to)
+  //   _synthetic= '1'                  (for future UI hinting if we want it)
+  //
+  // Caller should invoke this AFTER BeatsRegistry.init() resolves. Returns
+  // the number of orphans added so boot can log it.
+  synthesizeOrphansFromRhythm() {
+    if (typeof BeatsRegistry === 'undefined' || !BeatsRegistry.map) return 0;
+    const rhythmIds = Object.keys(BeatsRegistry.map);
+    if (!rhythmIds.length) return 0;
+    const known = new Set();
+    for (const t of this.tracks) {
+      const firstFile = (t.files && t.files[0]) || (t.meta && t.meta['offline.file']) || '';
+      const stem = firstFile.replace(/-(?:normal|high|off)\.(?:mp3|wav)$/i, '');
+      if (stem) known.add(stem);
+    }
+    let added = 0;
+    for (const id of rhythmIds) {
+      if (known.has(id)) continue;
+      this.tracks.push({
+        files: [id + '-normal.mp3'],
+        meta: {
+          signal:     'unknown',
+          decoder:    'unknown',
+          origin:     'unknown',
+          status:     'unknown',
+          access:     'unknown',
+          vibe:       '',
+          _synthetic: '1',
+        },
+        timeline: [],
+      });
+      added++;
+      console.warn('[radio] cf-signal.dat missing ' + id + ' — synthesizing fallback (metadata will show as "unknown")');
+    }
+    return added;
   },
 
   // Per-track silent/faint ranges from silent=(secN)-(secM); (secA)-(secB) …
@@ -2945,6 +3053,185 @@ const Registry = {
 // Session-scoped on purpose: clears on page reload so a later R2 re-upload
 // rehydrates without the user having to do anything.
 // ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// BLOCK REGISTRY — sharded-library loader
+// ──────────────────────────────────────────────────────────────────
+// A library of N tracks is sharded by build-blocks.py into blocks of up to
+// 10 tracks each. Each block has up to 4 shard files under /blocks/:
+//     bNN-signal.dat   bNN-rhythm.dat   bNN-links.dat   bNN-skip.dat
+// plus one  globals.dat  for the global config block, and  index.dat  that
+// lists which blocks exist + which shards each block ships.
+//
+// Player boot loads  index.dat + globals.dat + one random block's shards  only
+// — that's roughly 1/N of what the old monolithic cf-signal.dat flow fetched.
+// Additional blocks are loaded on demand (wildcard SCAN every 3rd / cross-block
+// code unlock / teaser pre-fetch for a next-track in another block).
+//
+// Each loaded block's data is MERGED into the existing registries:
+//     signal shard → Registry.tracks  (append)
+//     rhythm shard → BeatsRegistry.map  (merge by track id)
+//     links shard  → LinksRegistry.map  (merge by track id)
+//     skip shard   → ScanSkipRegistry.map  (merge by track id)
+// So downstream code (SCAN, loadTrack, beatFlagAt, etc.) sees a unified view.
+// ══════════════════════════════════════════════════════════════════
+const BlockRegistry = {
+  manifest:   [],              // [{ num, files: Set('signal'|'rhythm'|'links'|'skip'), count }]
+  loaded:     new Set(),       // block numbers already fetched + applied
+  blocksBase: null,            // e.g. 'https://…/blocks/'  or  './blocks/'
+
+  /**
+   * Parse  blocks/index.dat  into an ordered list of { num, files, count }.
+   * Line format:   <block>:<presence-csv>:<track-count>
+   *     e.g.       01:signal,rhythm,links,skip:10
+   * Comments start with '#'. Block 0 and block numbers that fail to parse
+   * are ignored defensively.
+   */
+  parseIndex(text) {
+    const out = [];
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      const parts = t.split(':');
+      if (parts.length < 2) continue;
+      const num = parseInt(parts[0], 10);
+      if (!isFinite(num) || num < 1) continue;
+      const files = new Set(
+        (parts[1] || '').split(',').map(s => s.trim()).filter(Boolean)
+      );
+      if (!files.has('signal')) continue;   // signal is required
+      const count = parts.length > 2 ? parseInt(parts[2], 10) : 0;
+      out.push({ num, files, count: isFinite(count) ? count : 0 });
+    }
+    out.sort((a, b) => a.num - b.num);
+    return out;
+  },
+
+  _shardName(kind, num) {
+    return 'b' + String(num).padStart(2, '0') + '-' + kind + '.dat';
+  },
+
+  /**
+   * Fetch + apply every shard for a single block. Idempotent — calling
+   * twice with the same num is a no-op after the first completes. Silent
+   * on per-shard failures (optional shards may be missing by design).
+   */
+  async loadBlock(num) {
+    if (this.loaded.has(num)) return true;
+    const entry = this.manifest.find(b => b.num === num);
+    if (!entry) return false;
+    if (!this.blocksBase) return false;
+
+    // Gate re-entry: if the same block is already mid-load from another
+    // code path (wildcard SCAN + teaser pre-fetch converging), return
+    // the in-flight promise instead of launching a parallel fetch swarm.
+    if (this._inFlight && this._inFlight.has(num)) {
+      return this._inFlight.get(num);
+    }
+    if (!this._inFlight) this._inFlight = new Map();
+    const p = this._doLoad(num, entry);
+    this._inFlight.set(num, p);
+    try {
+      await p;
+    } finally {
+      this._inFlight.delete(num);
+    }
+    return true;
+  },
+
+  async _doLoad(num, entry) {
+    const base = this.blocksBase;
+    const tasks = [];
+    for (const kind of ['signal', 'rhythm', 'links', 'skip']) {
+      if (!entry.files.has(kind)) continue;
+      const url = base + this._shardName(kind, num);
+      tasks.push(this._fetchAndApply(url, kind));
+    }
+    await Promise.all(tasks);
+    this.loaded.add(num);
+    console.log('[blocks] loaded b' + String(num).padStart(2, '0') +
+                '  (' + Array.from(entry.files).join('+') + ')  → ' +
+                Registry.tracks.length + ' total tracks in Registry');
+  },
+
+  async _fetchAndApply(url, kind) {
+    try {
+      const res = await fetch(url, { cache: 'no-cache' });
+      if (!res.ok) return;
+      const text = await res.text();
+      this._apply(kind, text);
+    } catch (_) { /* silent — optional shard, failure is OK */ }
+  },
+
+  /**
+   * Merge one shard's payload into the live in-memory state. Each kind
+   * uses its existing parse routine (which is already append-flavoured —
+   * the shard parsers write into maps keyed by track id, so later shards
+   * simply extend the map rather than replace it).
+   */
+  _apply(kind, text) {
+    if (kind === 'signal') {
+      const parsed = parseSignalDat(text);
+      for (const tr of parsed.tracks) {
+        // If a synthetic orphan entry already exists for this track-id (see
+        // Registry.synthesizeOrphansFromRhythm), upgrade it in place — keeps
+        // Registry.currentIdx + _recentPlayed stable when a block we already
+        // had as "unknown" gets its real metadata loaded via expand-scan.
+        const firstFile = (tr.files && tr.files[0]) || '';
+        const stem = firstFile.replace(/-(normal|high|off)\.(mp3|wav)$/i, '');
+        let upgraded = false;
+        if (stem) {
+          for (let i = 0; i < Registry.tracks.length; i++) {
+            const existing = Registry.tracks[i];
+            if (!existing || !existing.meta || !existing.meta._synthetic) continue;
+            const eff = (existing.files && existing.files[0]) || '';
+            const estem = eff.replace(/-(normal|high|off)\.(mp3|wav)$/i, '');
+            if (estem === stem) {
+              Registry.tracks[i] = tr;
+              upgraded = true;
+              break;
+            }
+          }
+        }
+        if (!upgraded) Registry.tracks.push(tr);
+      }
+      // Ignore any parsed.globals from shards — globals live only in
+      // blocks/globals.dat (applied once during Registry.init).
+    } else if (kind === 'rhythm') {
+      if (typeof BeatsRegistry !== 'undefined' && BeatsRegistry._parse) {
+        BeatsRegistry._parse(text);
+      }
+    } else if (kind === 'links') {
+      if (typeof LinksRegistry !== 'undefined' && LinksRegistry.parse) {
+        LinksRegistry.parse(text);
+      }
+    } else if (kind === 'skip') {
+      if (typeof ScanSkipRegistry !== 'undefined' && ScanSkipRegistry._parse) {
+        ScanSkipRegistry._parse(text);
+      }
+    }
+  },
+
+  /**
+   * Map a track-id like 'td-audio007' → 1, 'td-audio042' → 5, etc.
+   * Returns null for ids with no numeric suffix.
+   * Used by wildcard-SCAN + cross-block code unlock to resolve the target
+   * block without round-tripping through the manifest.
+   */
+  blockOfTrackId(tid) {
+    if (!tid) return null;
+    const m = /td-audio(\d+)/i.exec(tid);
+    if (!m) return null;
+    return Math.ceil(parseInt(m[1], 10) / 10);
+  },
+
+  blockOfTrackIdx(idx) {
+    const t = Registry.tracks[idx];
+    if (!t) return null;
+    const ff = (t.files && t.files[0]) || (t.meta && t.meta['offline.file']) || '';
+    return this.blockOfTrackId(ff.replace(/-(normal|high|off)\.(mp3|wav)$/i, ''));
+  }
+};
+
 const MissingFiles = {
   _set: new Set(),
   _base(url) {
@@ -6635,6 +6922,17 @@ function updateDbReadout(freq) {
 
   await Registry.init();
 
+  // Load cf-rhythm.dat BEFORE the initial pre-pick so orphan-track fallbacks
+  // (audio files that exist on R2 + appear in cf-rhythm.dat but were never
+  // added to cf-signal.dat) get folded into Registry.tracks first. Worst case
+  // this adds ~200 ms of boot latency when the rhythm file is missing or slow
+  // — the rescue block still fires at 12 s if anything drags.
+  await BeatsRegistry.init().catch(() => {/* ok, live-only detection */});
+  const orphans = Registry.synthesizeOrphansFromRhythm();
+  if (orphans > 0) {
+    console.log('[radio] synthesized ' + orphans + ' fallback track(s) from cf-rhythm.dat');
+  }
+
   // quality buttons respect tier + per-track file availability
   // (cfded → both disabled; online/local → HI-FI disabled if no .wav for this track)
   updateQualityAvailability();
@@ -6669,12 +6967,8 @@ function updateDbReadout(freq) {
   // load tracks/scan-skip.dat — extra scan-entry timestamps per track
   ScanSkipRegistry.init().catch(() => {/* ok, no skip data */});
 
-  // load tracks/cf-rhythm.dat — offline BPM/key/beat grid from analyze-beats.py.
-  // When present, the Player seeds BPM + KEY readouts instantly on track-load
-  // and uses the precomputed beat grid for accurate waveform accents while the
-  // live detectors converge. Optional — Player falls back to live detection
-  // alone when the file is missing or lists no entry for this track.
-  BeatsRegistry.init().catch(() => {/* ok, live-only detection */});
+  // (BeatsRegistry already loaded earlier in boot — moved up so orphan-track
+  //  fallbacks can be folded in before the pre-pick + quality-availability step.)
 
   // load locked.dat — tracks to hide from scan pool unless unlocked via a code this session
   await LockedRegistry.init().catch(() => {/* ok, no locks */});
