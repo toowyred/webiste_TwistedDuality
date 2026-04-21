@@ -7683,7 +7683,22 @@ const CodesRegistry = {
     let ok = false;
     if (target.startsWith('track:')) {
       const id = target.slice(6).trim();
-      const idx = this._trackIdxForId(id);
+      let idx = this._trackIdxForId(id);
+      // Cross-block unlock: if the track isn't in Registry yet, it may live in an
+      // unloaded block. Compute the target block from the id, load its shards, then
+      // retry. If the block isn't in the manifest either → genuine "track doesn't
+      // exist" case → return false (rejectWithHuh shake at the call site).
+      if (idx < 0 && Registry.usingBlocks && typeof BlockRegistry !== 'undefined') {
+        const blockNum = BlockRegistry.blockOfTrackId(id);
+        if (blockNum != null
+            && BlockRegistry.manifest.some(b => b.num === blockNum)
+            && !BlockRegistry.loaded.has(blockNum)) {
+          console.log('[codes] cross-block unlock → loading block b' +
+                      String(blockNum).padStart(2, '0') + ' for track:' + id);
+          try { await BlockRegistry.loadBlock(blockNum); } catch (_) {}
+          idx = this._trackIdxForId(id);
+        }
+      }
       if (idx < 0) return false;
       // Session-unlock if the target is currently locked — code access bypasses the lock
       // until the tab refreshes / closes. Nothing persisted.
