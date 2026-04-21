@@ -5821,6 +5821,24 @@ async function loadTrack(idx, options) {
     // If this idx is the one we pre-analysed at boot, warm-start the detectors
     // with cached BPM/KEY so the tuner shows real values immediately.
     if (typeof PreBuffer !== 'undefined') PreBuffer.seedLive(idx);
+    // Offline rhythm data (tracks/cf-rhythm.dat via BeatsRegistry) always wins
+    // as a seed — it's derived from the full file, not a 2 MB prefix. Seeds
+    // BPM + KEY readouts and clears the last-beat memo so the first beat
+    // after a track change fires cleanly.
+    if (typeof BeatsRegistry !== 'undefined') {
+      const offline = BeatsRegistry.forIdx(idx);
+      if (offline) {
+        if (offline.bpm > 0) {
+          bpmDetector.bpm = offline.bpm;
+          if (typeof bpmVal !== 'undefined' && bpmVal) bpmVal.textContent = Math.round(offline.bpm);
+        }
+        if (offline.key && keyDetector) {
+          keyDetector.key = offline.key;
+          if (typeof paintKey === 'function') paintKey(offline.key);
+        }
+      }
+      BeatsRegistry.resetHitMemo();
+    }
     // Effective start offset:
     //   • options.offsetSec wins (teaser hand-off uses this to skip the
     //     teaser-consumed seconds so no intro doubling)
@@ -6061,7 +6079,17 @@ function loop() {
     const freq = engine.getFrequency();
     if (freq && engine.playing) {
       bpmDetector.process(freq);
-      const b = bpmDetector.getBeatFlag(engine.currentTime);
+      // Beat-flag priority:
+      //   1. BeatsRegistry (precomputed, accurate from sec 0)
+      //   2. Live bpmDetector.getBeatFlag (converges after ~5 s)
+      // The live detector still runs its own analysis in parallel so it can
+      // refine / cross-check without depending on the offline file existing.
+      let b = 0;
+      if (typeof BeatsRegistry !== 'undefined' && BeatsRegistry.forIdx(Registry.currentIdx)) {
+        b = BeatsRegistry.beatFlagAt(Registry.currentIdx, engine.currentTime);
+      } else {
+        b = bpmDetector.getBeatFlag(engine.currentTime);
+      }
       if (b > _pendingBeat) _pendingBeat = b;
       if (keyDetector) keyDetector.process(freq, CFG.fftSize);
     }
@@ -6111,7 +6139,18 @@ function loop() {
       tuningNeedle.style.left = '0%';
       trackTime.textContent = (tunerEl && tunerEl.classList.contains('collapsed')) ? '-0:00' : '0:00 / 0:00';
     }
-    if (bpmDetector.bpm > 0) bpmVal.textContent = bpmDetector.bpm;
+    // BPM readout priority — same cascade as beat flags:
+    //   1. BeatsRegistry segment-aware BPM (for multi-tempo tracks, follows
+    //      the current playback position through BPM changes)
+    //   2. Live bpmDetector.bpm once it has a reading
+    // When the offline file only ships a single segment, bpmAt() returns a
+    // steady number and the readout stays in sync exactly as before.
+    let displayBpm = 0;
+    if (typeof BeatsRegistry !== 'undefined') {
+      displayBpm = BeatsRegistry.bpmAt(Registry.currentIdx, engine.currentTime);
+    }
+    if (!displayBpm && bpmDetector.bpm > 0) displayBpm = bpmDetector.bpm;
+    if (displayBpm > 0) bpmVal.textContent = Math.round(displayBpm);
     if (keyDetector && keyDetector.key) paintKey(keyDetector.key);
 
     // Subtitle stack render — strictly visual; skip when hidden.
@@ -6512,6 +6551,13 @@ function updateDbReadout(freq) {
   // load tracks/scan-skip.dat — extra scan-entry timestamps per track
   ScanSkipRegistry.init().catch(() => {/* ok, no skip data */});
 
+  // load tracks/cf-rhythm.dat — offline BPM/key/beat grid from analyze-beats.py.
+  // When present, the Player seeds BPM + KEY readouts instantly on track-load
+  // and uses the precomputed beat grid for accurate waveform accents while the
+  // live detectors converge. Optional — Player falls back to live detection
+  // alone when the file is missing or lists no entry for this track.
+  BeatsRegistry.init().catch(() => {/* ok, live-only detection */});
+
   // load locked.dat — tracks to hide from scan pool unless unlocked via a code this session
   await LockedRegistry.init().catch(() => {/* ok, no locks */});
 
@@ -6867,6 +6913,147 @@ const ScanSkipRegistry = {
     const firstFile = (t.files && t.files[0]) || t.meta['offline.file'] || '';
     const stem = firstFile.replace(/-(?:normal|high|off)\.(?:mp3|wav)$/i, '') || '';
     return this.map[stem] || [];
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// BEATS REGISTRY — offline BPM / key / beat-grid fed by tracks/analyze-beats.py
+// ──────────────────────────────────────────────────────────────────
+// Live BPM+key detectors need ~5 s of audio to converge, which means the very
+// first seconds of a track show dashes + slightly off-beat flashes on the
+// waveform. This registry pre-loads a per-track { bpm, key, beats[] } record
+// from radio/tracks/cf-rhythm.dat so we can:
+//   • seed bpmDetector / keyDetector on track-load (instant readouts)
+//   • drive accurate beat flags on the isometric terrain from frame 1
+// File format (one line per track, opaque numbers — see analyze-beats.py):
+//   <track-id>:<bpm*100>:<key>:<b1_ms>,<b2_ms>,<b3_ms>,...
+// Same tier cascade as signal.dat: loaded from whichever tier succeeded.
+// ══════════════════════════════════════════════════════════════════
+const BeatsRegistry = {
+  map: Object.create(null),       // trackStem → { bpm, key, beats: number[] (seconds) }
+  _lastHitKey: null,
+  _lastHitT: 0,
+
+  async init() {
+    if (!Registry.source) return;
+    const base = Registry.source.audioBase;                // .../tracks/
+    const url  = base + 'cf-rhythm.dat';
+    try {
+      const r = await fetch(url, { cache: 'no-cache' });
+      if (!r.ok) return;
+      this._parse(await r.text());
+    } catch (_) { /* silent — rhythm data is optional */ }
+  },
+
+  _parse(text) {
+    for (const line of String(text || '').split(/\r?\n/)) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      // Format:   <id> : <bpm-field> : <key> : <ms,ms,ms,...>
+      // <bpm-field> is either a bare  <bpm*100>     (single-tempo track)
+      //             or                <bpm*100>@<t_ms>|<bpm*100>@<t_ms>|…
+      //                                             (multi-segment track)
+      const parts = t.split(':');
+      if (parts.length < 4) continue;
+      const id        = parts[0].trim();
+      const bpmField  = parts[1].trim();
+      const key       = parts[2].trim();
+      const beatField = parts[3];
+
+      // Parse BPM segments (time-ordered). Always produces at least one entry.
+      let segments;
+      if (bpmField.indexOf('|') >= 0 || bpmField.indexOf('@') >= 0) {
+        segments = bpmField.split('|').map(seg => {
+          const at = seg.indexOf('@');
+          const bpm   = parseInt(at > 0 ? seg.slice(0, at) : seg, 10) / 100;
+          const start = at > 0 ? parseInt(seg.slice(at + 1), 10) / 1000 : 0;
+          return { bpm, start };
+        }).filter(s => isFinite(s.bpm) && s.bpm > 0 && isFinite(s.start) && s.start >= 0);
+        segments.sort((a, b) => a.start - b.start);
+      } else {
+        const bpm = parseInt(bpmField, 10) / 100;
+        segments = (isFinite(bpm) && bpm > 0) ? [{ bpm, start: 0 }] : [];
+      }
+      if (!id || !segments.length) continue;
+
+      // `primary` is the initial seed used at track-load (before the RAF loop
+      // kicks in with bpmAt()-driven segment-aware updates). Using the opening
+      // segment's BPM is the right choice for the brief moment between load
+      // and first loop tick — it matches what the user will actually hear at
+      // sec 0. For single-segment tracks this trivially equals the only BPM.
+      const primary = segments[0].bpm;
+
+      const beats = beatField
+        .split(',')
+        .map(n => parseInt(n, 10))
+        .filter(n => isFinite(n) && n >= 0)
+        .map(ms => ms / 1000);
+
+      this.map[id] = { bpm: primary, key, beats, segments };
+    }
+  },
+
+  // Return the BPM in effect at time `t` for this track — walks the segment
+  // list (always sorted by start) and picks the last segment whose start ≤ t.
+  bpmAt(idx, t) {
+    const data = this.forIdx(idx);
+    if (!data || !data.segments || !data.segments.length) return 0;
+    const segs = data.segments;
+    let bpm = segs[0].bpm;
+    for (let i = 1; i < segs.length; i++) {
+      if (segs[i].start <= t) bpm = segs[i].bpm;
+      else break;
+    }
+    return bpm;
+  },
+
+  // Look up the record for a track — resolves the id the same way ScanSkipRegistry does.
+  forIdx(idx) {
+    const t = Registry.tracks[idx];
+    if (!t) return null;
+    const firstFile = (t.files && t.files[0]) || t.meta['offline.file'] || '';
+    const stem = firstFile.replace(/-(?:normal|high|off)\.(?:mp3|wav)$/i, '') || '';
+    return stem ? (this.map[stem] || null) : null;
+  },
+
+  // Reset the "last beat fired" memo — call on every track change so a seek
+  // back to an earlier beat still fires once.
+  resetHitMemo() {
+    this._lastHitKey = null;
+    this._lastHitT = 0;
+  },
+
+  // Binary search for the beat nearest to `t` within `tol` seconds.
+  // Returns { beat, index } or null.
+  _nearest(beats, t, tol) {
+    if (!beats.length) return null;
+    let lo = 0, hi = beats.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (beats[mid] < t) lo = mid + 1;
+      else hi = mid;
+    }
+    let best = lo, bestD = Math.abs(beats[lo] - t);
+    if (lo > 0 && Math.abs(beats[lo - 1] - t) < bestD) {
+      best = lo - 1; bestD = Math.abs(beats[lo - 1] - t);
+    }
+    return bestD <= tol ? { beat: beats[best], index: best } : null;
+  },
+
+  // Drop-in replacement for bpmDetector.getBeatFlag(). Returns 0 / 1 / 2 —
+  // flag 2 on every 4th beat (bar accent), flag 1 on the others. De-dupes so
+  // the same beat can't fire twice in quick succession (RAF jitter / tiny seeks).
+  beatFlagAt(idx, t) {
+    const data = this.forIdx(idx);
+    if (!data) return 0;
+    const hit = this._nearest(data.beats, t, 0.06);
+    if (!hit) return 0;
+    const key = idx + ':' + hit.index;
+    const now = performance.now();
+    if (this._lastHitKey === key && now - this._lastHitT < 250) return 0;
+    this._lastHitKey = key;
+    this._lastHitT   = now;
+    return (hit.index % 4 === 0) ? 2 : 1;
   }
 };
 
