@@ -311,6 +311,66 @@
     font-size: 13px;
   }
 
+  /* ── "?" backup-refresh button (above COLLAPSE, flush to x=0) ──────────
+     Square (width == height == --card-strip-w). First tap expands the hint row;
+     second tap triggers refreshMetadataWatchdog() to re-fetch .dat files without
+     interrupting playback. Anchored to the track-card so it moves with the card
+     across breakpoints + card-offset-x/y. */
+  .card-help-wrap {
+    position: absolute;
+    left: 0; bottom: 100%;
+    display: flex; flex-direction: column; align-items: flex-start;
+    pointer-events: none;                /* children re-enable */
+  }
+  .card-help-wrap > * { pointer-events: auto; }
+  .card-help {
+    width: var(--card-strip-w); height: var(--card-strip-w);
+    padding: 0; border: 1px solid var(--accent-dim);
+    border-bottom: none;                 /* sits flush on top of the COLLAPSE strip */
+    background: var(--accent);
+    color: var(--bg);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-style: italic; font-weight: bold;
+    font-size: 18px; line-height: 1;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: filter 0.15s, box-shadow 0.15s;
+  }
+  .card-help:hover, .card-help:focus-visible { filter: brightness(1.12); outline: none; }
+  .card-help.refreshing {
+    animation: help-pulse 0.8s ease-in-out infinite;
+  }
+  @keyframes help-pulse {
+    0%, 100% { filter: brightness(1);    box-shadow: 0 0 0 0 var(--accent); }
+    50%      { filter: brightness(1.35); box-shadow: 0 0 12px 2px var(--accent); }
+  }
+  .card-help-hint {
+    display: none;
+    align-items: center; gap: 8px;
+    padding: 6px 10px 6px 6px;
+    background: rgba(0,0,0,0.82);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--accent-dim);
+    color: var(--fg);
+    font-family: 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  html.no-transparency .card-help-hint {
+    background: var(--panel);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  .card-help-wrap.expanded .card-help-hint { display: inline-flex; }
+  .card-help-hint .card-help-icon-sm {
+    flex: 0 0 auto;
+    width: 18px; height: 18px;
+    background: var(--accent); color: var(--bg);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-style: italic; font-weight: bold;
+    font-size: 12px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+
   /* card body holds the 2-col label/value grid — animates to 0 width when collapsed */
   .card-body {
     background: rgba(0,0,0,0.45);
@@ -1395,6 +1455,17 @@
 
 <!-- metadata block (middle-left edge, 2-col label/value + vertical collapse button) -->
 <div class="track-card" id="trackCard">
+  <!-- "?" backup-refresh button. Sits above the COLLAPSE strip, pinned to x=0.
+       First tap → expand the hint row. Second tap → re-fetch all sidecar .dat files
+       (cf-signal, track-links, codes, locked, scan-skip, print manifest) + re-run
+       timeline + SRT against currentTime. Music keeps playing untouched. -->
+  <div class="card-help-wrap" id="cardHelpWrap">
+    <button class="card-help" id="cardHelp" type="button" aria-label="Refresh metadata">?</button>
+    <div class="card-help-hint" id="cardHelpHint" aria-hidden="true">
+      <span class="card-help-icon-sm" aria-hidden="true">?</span>
+      <span class="card-help-hint-text" data-i18n="help-hint">Tap again if <span translate="no">meta-data</span> is incorrect.</span>
+    </div>
+  </div>
   <button class="card-collapse" id="cardCollapse" translate="no" aria-label="Collapse track card">
     <span class="cc-text" id="ccText">COLLAPSE</span>
     <span class="cc-arrow" id="ccArrow" aria-hidden="true">&darr;</span>
@@ -1741,6 +1812,9 @@ const I18N = {
     'no-signal': 'NO SIGNAL FOUND',
     'failed': 'TRANSMISSION FAILED',
     'corrupted': 'CORRUPTED TRANSMISSION',
+    'help-hint': 'Tap again if <span translate="no">meta-data</span> is incorrect.',
+    'meta-refreshed': 'METADATA REFRESHED',
+    'meta-refreshing': 'REFRESHING METADATA...',
   },
   de: {
     'bar-title': 'FUNKEMPFÄNGER',
@@ -1793,6 +1867,9 @@ const I18N = {
     'no-signal': 'KEIN SIGNAL',
     'failed': 'ÜBERTRAGUNG FEHLGESCHLAGEN',
     'corrupted': 'ÜBERTRAGUNG GESTÖRT',
+    'help-hint': 'Nochmal tippen, wenn <span translate="no">meta-data</span> falsch ist.',
+    'meta-refreshed': 'METADATEN AKTUALISIERT',
+    'meta-refreshing': 'METADATEN WERDEN AKTUALISIERT...',
   },
   es: {
     'bar-title': 'RECEPTOR DE RADIO',
@@ -1949,6 +2026,9 @@ const I18N = {
     'no-signal': '信号喪失',
     'failed': '伝送失敗',
     'corrupted': '伝送破損',
+    'help-hint': '<span translate="no">meta-data</span>が誤っていればもう一度タップ',
+    'meta-refreshed': 'メタデータ更新完了',
+    'meta-refreshing': 'メタデータを更新中...',
   }
 };
 
@@ -1962,7 +2042,11 @@ function applyLang(lang) {
   document.documentElement.lang = lang;
   localStorage.setItem('td-radio-lang', lang);
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = t(el.dataset.i18n);
+    const v = t(el.dataset.i18n);
+    // allow trusted inline markup (e.g. <span translate="no"> inside i18n strings).
+    // All strings are hard-coded in the I18N dict — no user input involved.
+    if (v.indexOf('<') >= 0) el.innerHTML = v;
+    else el.textContent = v;
   });
   document.querySelectorAll('.bar-menu [data-lang-btn]').forEach(b => {
     b.classList.toggle('active', b.dataset.langBtn === lang);
@@ -2785,6 +2869,7 @@ const btnPlay = $('btnPlay'), btnScan = $('btnScan');
 const tuningBar = $('tuningBar'), tuningProg = $('tuningProg'), tuningNeedle = $('tuningNeedle');
 const tuningLock = $('tuningLock');
 const hifiOptions = $('hifiOptions'), hifiOptWav = $('hifiOptWav'), hifiOptMp3 = $('hifiOptMp3');
+const cardHelpWrap = $('cardHelpWrap'), cardHelp = $('cardHelp');
 const trackNameCycler = $('trackNameCycler'), trackTime = $('trackTime');
 const freqNum = $('freqNum'), freqUnit = $('freqUnit'), dbReadout = $('dbReadout');
 const bpmVal = $('bpmVal'), keyVal = $('keyVal');
@@ -3230,8 +3315,9 @@ function setQuality(q) {
   localStorage.setItem('td-radio-quality', q);
   qbtnNormal.classList.toggle('active', q === 'normal');
   qbtnHighfi.classList.toggle('active', q === 'highfi');
-  // Rainbow glow only while HI-FI is the live tier.
-  qbtnHighfi.classList.toggle('hifi-glow', q === 'highfi');
+  // Rainbow glow ONLY while HI-FI is the live tier AND it's actually usable for
+  // this track. Disabled (no .wav / no -high.mp3 available) → never glow.
+  qbtnHighfi.classList.toggle('hifi-glow', q === 'highfi' && !qbtnHighfi.disabled);
 }
 function setHifiKind(kind) {
   if (kind !== 'wav' && kind !== 'mp3-320') kind = 'wav';
@@ -3315,6 +3401,116 @@ document.addEventListener('click', (e) => {
 
 setHifiKind(Registry.hifiKind);
 setQuality(Registry.quality);
+
+// ══════════════════════════════════════════════════════════════════
+// "?" BACKUP-REFRESH BUTTON — manual watchdog when meta-data looks wrong.
+// Two-tap state machine:
+//   tap 1 → expand the hint row ("Tap again if meta-data is incorrect")
+//   tap 2 → re-fetch every sidecar .dat file from the currently-active tier,
+//           re-apply metadata + SRT, and catch the timeline up to currentTime.
+//           The <audio> element is NEVER touched — playback continues uninterrupted.
+// Auto-collapses after 6s idle or on click-outside.
+// ══════════════════════════════════════════════════════════════════
+let _helpArmed = false, _helpCollapseTimer = null;
+function collapseHelpHint() {
+  cardHelpWrap.classList.remove('expanded');
+  _helpArmed = false;
+  if (_helpCollapseTimer) { clearTimeout(_helpCollapseTimer); _helpCollapseTimer = null; }
+}
+function armHelpHint() {
+  cardHelpWrap.classList.add('expanded');
+  _helpArmed = true;
+  if (_helpCollapseTimer) clearTimeout(_helpCollapseTimer);
+  _helpCollapseTimer = setTimeout(collapseHelpHint, 6000);
+}
+cardHelp.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  if (!_helpArmed) { armHelpHint(); return; }
+  // second tap → commit the refresh
+  collapseHelpHint();
+  if (cardHelp.classList.contains('refreshing')) return;  // already running
+  cardHelp.classList.add('refreshing');
+  if (typeof toast === 'function') toast(t('meta-refreshing'), 1400);
+  try {
+    await refreshMetadataWatchdog();
+    if (typeof toast === 'function') toast(t('meta-refreshed'), 1800);
+  } catch (_) {
+    if (typeof toast === 'function') toast(t('failed'), 1800);
+  } finally {
+    cardHelp.classList.remove('refreshing');
+  }
+});
+// click-outside closes the hint without committing
+document.addEventListener('click', (e) => {
+  if (!cardHelpWrap.classList.contains('expanded')) return;
+  if (cardHelpWrap.contains(e.target)) return;
+  collapseHelpHint();
+});
+// Esc closes it too
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && cardHelpWrap.classList.contains('expanded')) collapseHelpHint();
+});
+
+// Re-fetch cf-signal.dat and merge the updated meta/timeline into each in-memory
+// track record. We deliberately KEEP the existing files[] / startSec bindings —
+// swapping those mid-playback would yank the rug out from the active <audio> src.
+// Matches tracks by ordinal first (common case: same list length), then falls back
+// to first-filename equality for resilience.
+async function refetchSignalMeta() {
+  if (!Registry.source) return false;
+  const res = await fetch(Registry.source.signal, { cache: 'no-cache' });
+  if (!res.ok) return false;
+  const text = await res.text();
+  const parsed = parseSignalDat(text);
+  if (!parsed.tracks.length) return false;
+  const oldTracks = Registry.tracks;
+  if (parsed.tracks.length === oldTracks.length) {
+    for (let i = 0; i < oldTracks.length; i++) {
+      oldTracks[i].meta = parsed.tracks[i].meta;
+      oldTracks[i].timeline = parsed.tracks[i].timeline;
+    }
+  } else {
+    for (const oldT of oldTracks) {
+      const ofile = (oldT.files && oldT.files[0]) || '';
+      if (!ofile) continue;
+      const matched = parsed.tracks.find(nt => (nt.files || []).some(f => f === ofile));
+      if (matched) { oldT.meta = matched.meta; oldT.timeline = matched.timeline; }
+    }
+  }
+  // Refresh globals too (crossfadeMs / interNoiseLevel / cyclerTick / printDefault)
+  if (parsed.globals) {
+    const g = parsed.globals;
+    const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+    if (num(g.cyclerTick)   != null && num(g.cyclerTick)   > 0) Registry.globals.cyclerTick   = num(g.cyclerTick);
+    if (num(g.printDefault) != null && num(g.printDefault) > 0) Registry.globals.printDefault = num(g.printDefault);
+    if (g.crossfadeMs    != null && num(g.crossfadeMs)    != null) Registry.globals.crossfadeMs    = Math.max(0, Math.min(2000, num(g.crossfadeMs)));
+    if (g.interNoiseLevel!= null && num(g.interNoiseLevel)!= null) Registry.globals.interNoiseLevel= Math.max(0, Math.min(1,    num(g.interNoiseLevel)));
+  }
+  return true;
+}
+
+async function refreshMetadataWatchdog() {
+  const idx = Registry.currentIdx;
+  const now = (engine && engine.currentTime) ? engine.currentTime : 0;
+  // All sidecars run in parallel — each catches its own failure so a missing file
+  // never blocks the others. cf-signal.dat is intentionally re-fetched here too so
+  // corrected titles / prints / timeline edits pick up without a full reload.
+  await Promise.allSettled([
+    refetchSignalMeta(),
+    (typeof LinksRegistry    !== 'undefined') ? LinksRegistry.init()    : null,
+    (typeof PrintImages      !== 'undefined') ? PrintImages.init()      : null,
+    (typeof CodesRegistry    !== 'undefined') ? CodesRegistry.init()    : null,
+    (typeof ScanSkipRegistry !== 'undefined') ? ScanSkipRegistry.init() : null,
+    (typeof LockedRegistry   !== 'undefined') ? LockedRegistry.init()   : null,
+  ]);
+  // Re-apply card metadata + SRT for the live track, then catch the timeline up to
+  // the current playback offset so any fresh FIELD(secN)=value events land.
+  if (idx >= 0) {
+    if (typeof applyMeta === 'function') applyMeta(idx);
+    if (typeof TimelineRunner !== 'undefined') TimelineRunner.catchUpTo(now);
+    if (typeof updateQualityAvailability === 'function') updateQualityAvailability();
+  }
+}
 
 // ══════════════════════════════════════════════════════════════════
 // LIVE STATE + TIMELINE RUNNER
@@ -3790,6 +3986,13 @@ function updateQualityAvailability() {
   qbtnNormal.title = hasNormal ? 'Recalibrate signal to NORMAL' : 'No NORMAL file available';
   qbtnHighfi.disabled = !hasHighfi;
   qbtnHighfi.title = hasHighfi ? 'Recalibrate signal to HI-FI' : 'No HI-FI file for this track';
+  // Rainbow glow must only appear when HI-FI is BOTH the active tier AND usable for
+  // this track. Force it off on any track that ships neither WAV nor -high.mp3,
+  // even if Registry.quality is still 'highfi' from a previous track's state.
+  if (!hasHighfi) qbtnHighfi.classList.remove('hifi-glow');
+  else if (Registry.quality === 'highfi') qbtnHighfi.classList.add('hifi-glow');
+  // Close any lingering popup when the button becomes unusable
+  if (!hasHighfi && typeof closeHifiMenu === 'function') closeHifiMenu();
   // If the user previously picked a kind that isn't available for THIS track, fall
   // back silently — urlFor() has its own fallback, but keep the menu state truthful.
   if (Registry.quality === 'highfi') {
