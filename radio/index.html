@@ -2591,15 +2591,24 @@ const Registry = {
     return raw.map(r => isFinite(r.end) ? r : { start: r.start, end: duration });
   },
 
-  // Convenience: return the LAST silent range if it extends to within `tol`
-  // seconds of the track's duration (i.e. the outro tail). null otherwise.
-  // Used by the early-advance trigger in loop() — duration comes from the
-  // caller since it's only known after loadedmetadata on the live engine.
+  // Return the LAST silent range ONLY IF it qualifies as an outro — i.e. its
+  // end is within `tol` seconds of the track's duration (2 s default). Returns
+  // null for anything else, including:
+  //   • tracks with only mid-track silent intermissions (e.g. sec20-sec25 in a
+  //     3-min track — those are reserved for future use like station-ID voice
+  //     overlays, transition stingers, ducking the visualizer, etc.);
+  //   • the intro-only case (silent=(sec0)-(sec4) with no outro range);
+  //   • no silent= at all.
+  // This is the ONLY method the teaser + early-advance paths consult — so
+  // mid-track intermissions are guaranteed not to trigger either behaviour.
+  // Raw ranges (including mid-track) remain available via silentRangesFor().
   silentOutroFor(idx, duration, tol) {
     if (!duration || duration <= 0) return null;
     const ranges = this.silentRangesFor(idx);
     if (!ranges.length) return null;
     const last = ranges[ranges.length - 1];
+    // Outro qualification: last.end must land at-or-near the track's end.
+    // Infinity (from "-(end)") naturally satisfies this via (dur - Inf) = -Inf.
     if ((duration - last.end) <= (tol == null ? 2 : tol)) return last;
     return null;
   },
