@@ -4422,7 +4422,11 @@ const NextBuffer = {
     let signedUrl;
     try { signedUrl = await Registry.signUrl(rawUrl); } catch (_) { return; }
     if (this.idx !== next) return;                              // cancelled mid-sign
-    const BUDGET = 2 * 1024 * 1024;                             // ~5 s WAV / ~50 s 320-kbps MP3
+    // Byte budget — enough partial audio to cover most declared silent outros.
+    // 3 MB gives ~17 s of lossless WAV (1411 kbps) or ~76 s of 320-kbps MP3.
+    // If a real outro exceeds the decoded length, the teaser simply ends early
+    // and the remainder of the outro plays as originally written (silent).
+    const BUDGET = 3 * 1024 * 1024;
     const ctrl = new AbortController();
     this.abort = ctrl;
     let blob = null;
@@ -5555,13 +5559,16 @@ function loop() {
       if (!_teaserFired && !_silentOutroFired && engine.currentTime >= outro.start) {
         if (NextBuffer.isReadyFor(Registry.currentIdx)) {
           _teaserFired = true;
-          // Teaser duration fits inside the silent outro (cap at 3.2 s; leave
-          // a small margin so the tail doesn't bleed into the real next track).
-          // If the outro ends with (end), the stored end is Infinity — substitute
-          // the live duration to get a realistic outro length.
+          // Teaser fills the whole silent outro, minus a 0.3 s tail margin so
+          // it can't bleed into the real next-track intro at natural end. If
+          // the outro ends with (end), the stored end is Infinity — substitute
+          // the live duration to get a realistic outro length. The actual
+          // playback duration is further clamped by the decoded buffer length
+          // inside playTeaser() — if the partial decode was shorter than the
+          // outro, the remainder is just silence (the outro is silent anyway).
           const outroEnd = isFinite(outro.end) ? outro.end : engine.duration;
           const outroLen = Math.max(0, outroEnd - outro.start);
-          const teaseDur = Math.min(3.2, Math.max(1.2, outroLen - 0.3));
+          const teaseDur = Math.max(1.2, outroLen - 0.3);
           playTeaser(NextBuffer.audio, teaseDur);
         } else {
           _silentOutroFired = true;
