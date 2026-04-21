@@ -3037,6 +3037,26 @@ const Registry = {
       if (!pool.length) return playable[0];               // only one playable + it's current → play it anyway
     }
     return pool[Math.floor(Math.random() * pool.length)];
+  },
+
+  // Wildcard SCAN (every 3rd) biases pick to a specific block after it loads.
+  // Same playable/recent/current exclusions as pickRandomIdx; scoped to tracks
+  // whose blockOfTrackIdx === blockNum. Falls back to pickRandomIdx if the
+  // block yielded no pickable idx (pool exhausted / all locked / only current).
+  pickRandomIdxInBlock(blockNum) {
+    if (!this.tracks.length) return -1;
+    if (typeof BlockRegistry === 'undefined') return this.pickRandomIdx();
+    const inBlock = this.tracks
+      .map((_, i) => i)
+      .filter(i => BlockRegistry.blockOfTrackIdx(i) === blockNum && this._playable(i));
+    if (!inBlock.length) return this.pickRandomIdx();
+    if (inBlock.length === 1 && inBlock[0] === this.currentIdx) return this.pickRandomIdx();
+    const exclude = new Set(this._recentPlayed);
+    exclude.add(this.currentIdx);
+    let pool = inBlock.filter(i => !exclude.has(i));
+    if (!pool.length) pool = inBlock.filter(i => i !== this.currentIdx);
+    if (!pool.length) return this.pickRandomIdx();
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 };
 
@@ -6311,6 +6331,7 @@ async function loadTrack(idx, options) {
 
 // ── SCAN: noise → crossfade to next random track ──
 let _scanInFlight = false;
+let _scanCount = 0;   // session-scoped (resets on page reload); every 3rd SCAN is wildcard
 btnScan.addEventListener('click', async () => {
   if (_scanInFlight) return;
   if (!Registry.tracks.length) { toast(t('no-signal')); return; }
@@ -6327,10 +6348,34 @@ btnScan.addEventListener('click', async () => {
   // First SCAN ever: play the track the Player already pre-picked at boot (the one
   // we may have pre-buffered + pre-analysed). Subsequent SCANs pick a fresh random.
   let nextIdx;
-  if (!engine.buffer && Registry.currentIdx >= 0 && Registry._playable(Registry.currentIdx)) {
+  const isFirstScan = (!engine.buffer && Registry.currentIdx >= 0 && Registry._playable(Registry.currentIdx));
+  if (isFirstScan) {
     nextIdx = Registry.currentIdx;
   } else {
-    nextIdx = Registry.pickRandomIdx();
+    // Wildcard-every-3rd: expand the random pool by loading ONE additional block
+    // (if any unloaded remain) and biasing nextIdx to a track from that block.
+    // Counter only increments on scans that actually make it past the in-flight
+    // guard (ensures rapid double-clicks don't burn wildcards).
+    _scanCount++;
+    const isWildcard = (_scanCount % 3 === 0)
+                        && Registry.usingBlocks
+                        && typeof BlockRegistry !== 'undefined';
+    let wildcardBlockNum = null;
+    if (isWildcard) {
+      const unloaded = BlockRegistry.manifest.filter(b => !BlockRegistry.loaded.has(b.num));
+      if (unloaded.length) {
+        const pick = unloaded[Math.floor(Math.random() * unloaded.length)];
+        console.log('[scan] wildcard #' + _scanCount + ' → loading block b' +
+                    String(pick.num).padStart(2, '0'));
+        try { await BlockRegistry.loadBlock(pick.num); wildcardBlockNum = pick.num; }
+        catch (e) { console.warn('[scan] wildcard block load failed', e); }
+      } else {
+        console.log('[scan] wildcard #' + _scanCount + ' → all blocks already loaded, normal pick');
+      }
+    }
+    nextIdx = (wildcardBlockNum !== null)
+      ? Registry.pickRandomIdxInBlock(wildcardBlockNum)
+      : Registry.pickRandomIdx();
   }
   if (nextIdx < 0) {
     toast(t('corrupted'));
