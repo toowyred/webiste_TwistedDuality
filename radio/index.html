@@ -1378,6 +1378,73 @@
   .loading .dots { font-family: 'Courier New', monospace; color: var(--accent); }
   .loading .status { font-size: 9px; color: var(--dim); letter-spacing: 2px; }
 
+  /* ── loading rescue ─────────────────────────────────────────────
+     Fades in ~12 s after boot starts if CONTACTING TRANSMITTER is still
+     showing — lets users reach us via email / IG instead of staring at
+     a stuck screen. Hidden by default; JS toggles `.show-rescue` on
+     the parent .loading when the timer fires, and cancels on hideLoading(). */
+  .loading-rescue {
+    margin-top: 48px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 14px;
+    max-width: min(90vw, 440px);
+    text-align: center;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .loading.show-rescue .loading-rescue {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .loading-rescue .rescue-msg {
+    font-size: 11px; letter-spacing: 2px;
+    color: var(--muted); line-height: 1.6;
+  }
+  .loading-rescue .rescue-actions {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+  }
+  .loading-rescue .rescue-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px; letter-spacing: 1px; text-transform: none;
+    color: var(--accent);
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--accent-dim);
+    text-decoration: none;
+    box-shadow: 3px 3px 0 var(--accent-dim);
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s;
+  }
+  .loading-rescue .rescue-btn:hover,
+  .loading-rescue .rescue-btn:focus-visible {
+    background: rgba(255,255,255,0.06);
+    border-color: var(--accent);
+    color: var(--fg);
+    outline: none;
+    transform: translate(-1px, -1px);
+    box-shadow: 4px 4px 0 var(--accent);
+  }
+  .loading-rescue .rescue-btn:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 var(--accent-dim);
+  }
+  .loading-rescue .rescue-btn .rescue-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px;
+    border: 1px solid var(--accent-dim);
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-style: italic; font-weight: bold;
+    font-size: 13px; line-height: 1;
+    color: var(--accent);
+  }
+  @media (max-width: 520px) {
+    .loading-rescue .rescue-actions { flex-direction: column; width: 100%; }
+    .loading-rescue .rescue-btn { justify-content: center; width: 100%; font-size: 10px; }
+  }
+
   /* ── prevent right-click/drag on media elements area ── */
   #viz { pointer-events: auto; }
 
@@ -1978,6 +2045,20 @@
 <div class="loading" id="loading">
   <div><span data-i18n="tuning-in">TUNING IN</span><span class="dots" id="loadDots">...</span></div>
   <div class="status" id="loadStatus">CONTACTING TRANSMITTER</div>
+  <!-- Contact fallback — fades in after ~12 s if boot hasn't completed. -->
+  <div class="loading-rescue" id="loadingRescue" aria-hidden="true">
+    <div class="rescue-msg" data-i18n="rescue-msg">Stuck here? Let us know.</div>
+    <div class="rescue-actions">
+      <a class="rescue-btn" href="mailto:twistedduality@afest.io" rel="noopener">
+        <span class="rescue-icon" aria-hidden="true">@</span>
+        <span translate="no">twistedduality@afest.io</span>
+      </a>
+      <a class="rescue-btn" href="https://www.instagram.com/twst.dual/" target="_blank" rel="noopener noreferrer">
+        <span class="rescue-icon" aria-hidden="true">◎</span>
+        <span translate="no">@twst.dual</span>
+      </a>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2073,6 +2154,7 @@ const I18N = {
     'q-highfi': 'HI-FI',
     'tuning-in': 'TUNING IN',
     'contacting': 'CONTACTING TRANSMITTER',
+    'rescue-msg': 'Stuck here? Signal may be weak — reach us directly:',
     'offline-mode': 'FALLBACK · OFFLINE SIGNAL',
     'on-air': 'ON-AIR',
     'scanning': 'SCANNING',
@@ -2131,6 +2213,7 @@ const I18N = {
     'q-highfi': 'HI-FI',
     'tuning-in': 'EINSTELLEN',
     'contacting': 'KONTAKTIERE SENDER',
+    'rescue-msg': 'Festgefahren? Schreib uns direkt:',
     'offline-mode': 'NOTBETRIEB · OFFLINE-SIGNAL',
     'on-air': 'ON-AIR',
     'scanning': 'SUCHLAUF',
@@ -2189,6 +2272,7 @@ const I18N = {
     'q-highfi': 'HI-FI',
     'tuning-in': 'SINTONIZANDO',
     'contacting': 'CONTACTANDO TRANSMISOR',
+    'rescue-msg': '¿Atascado? Contáctanos directamente:',
     'offline-mode': 'RESPALDO \u00B7 SE\u00D1AL SIN CONEXI\u00D3N',
     'on-air': 'AL AIRE',
     'scanning': 'BUSCANDO',
@@ -2241,6 +2325,7 @@ const I18N = {
     'q-highfi': 'HI-FI',
     'tuning-in': 'SYNTONISATION',
     'contacting': 'CONTACT DU TRANSMETTEUR',
+    'rescue-msg': 'Bloqué ici ? Écris-nous directement :',
     'offline-mode': 'SECOURS \u00B7 SIGNAL HORS LIGNE',
     'on-air': 'EN ONDES',
     'scanning': 'BALAYAGE',
@@ -2293,6 +2378,7 @@ const I18N = {
     'q-highfi': '高音質',
     'tuning-in': '同調中',
     'contacting': '送信所接続中',
+    'rescue-msg': 'ここで止まってる?直接ご連絡ください:',
     'offline-mode': '緊急回路・オフライン',
     'on-air': '送信中',
     'scanning': '走査中',
@@ -4087,7 +4173,33 @@ function perfWatchTick() {
 })();
 
 function setLoadStatus(key) { loadStatus.textContent = t(key); }
-function hideLoading() { loadingEl.classList.add('hidden'); setTimeout(() => loadingEl.style.display = 'none', 600); }
+
+// Rescue block: if we're still on the loading screen after ~12 s, fade in the
+// "contact us" email + IG links so users aren't stuck staring at
+// CONTACTING TRANSMITTER with no way to reach us. Cancelled by hideLoading()
+// the moment boot actually completes.
+let _rescueTimer = null;
+const RESCUE_DELAY_MS = 12000;
+function armLoadingRescue() {
+  if (_rescueTimer) return;
+  _rescueTimer = setTimeout(() => {
+    _rescueTimer = null;
+    if (loadingEl && !loadingEl.classList.contains('hidden')) {
+      loadingEl.classList.add('show-rescue');
+      const r = document.getElementById('loadingRescue');
+      if (r) r.setAttribute('aria-hidden', 'false');
+    }
+  }, RESCUE_DELAY_MS);
+}
+function cancelLoadingRescue() {
+  if (_rescueTimer) { clearTimeout(_rescueTimer); _rescueTimer = null; }
+}
+
+function hideLoading() {
+  cancelLoadingRescue();
+  loadingEl.classList.add('hidden');
+  setTimeout(() => loadingEl.style.display = 'none', 600);
+}
 
 let _toastTimer = null;
 function toast(msg, dur) {
@@ -6143,10 +6255,13 @@ function loop() {
     //   1. BeatsRegistry segment-aware BPM (for multi-tempo tracks, follows
     //      the current playback position through BPM changes)
     //   2. Live bpmDetector.bpm once it has a reading
-    // When the offline file only ships a single segment, bpmAt() returns a
-    // steady number and the readout stays in sync exactly as before.
+    // IMPORTANT: `engine.buffer` gate is load-bearing — it short-circuits on
+    // the very first loop() tick (before the script has parsed past the
+    // BeatsRegistry const declaration below). Without it, `typeof BeatsRegistry`
+    // throws a TDZ ReferenceError and halts boot. For single-segment tracks
+    // this codepath does the same thing as the old `bpmDetector.bpm` readout.
     let displayBpm = 0;
-    if (typeof BeatsRegistry !== 'undefined') {
+    if (engine.buffer && typeof BeatsRegistry !== 'undefined') {
       displayBpm = BeatsRegistry.bpmAt(Registry.currentIdx, engine.currentTime);
     }
     if (!displayBpm && bpmDetector.bpm > 0) displayBpm = bpmDetector.bpm;
@@ -6508,6 +6623,9 @@ function updateDbReadout(freq) {
 (async function boot() {
   applyLang(currentLang);
   setLoadStatus('contacting');
+  // If boot hangs (slow Registry.init, hostile network, code regression),
+  // reveal a "contact us" rescue block on the loading screen after 12 s.
+  armLoadingRescue();
   // dots animation during load
   const dotsEl = $('loadDots');
   const dotsTimer = setInterval(() => {
