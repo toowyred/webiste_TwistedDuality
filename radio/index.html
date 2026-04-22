@@ -472,6 +472,32 @@
     display: grid; grid-template-columns: auto 1fr auto auto; gap: 14px;
     align-items: stretch; padding: 34px 18px 12px;   /* top leaves ~16px clear below the 18px handle */
   }
+
+  /* ── Reflection-on tuner treatment ───────────────────────────────
+     When the visitor turns Reflection ON in Settings, the whole tuner
+     panel drops into the same light translucent surface as the nav
+     top-bar (rgba(10,10,10,0.55) + the same blur), so the mirrored
+     terrain shows through cleanly. Buttons stay OPAQUE — both to keep
+     transport CTAs legible against the noisy reflection and to cut the
+     expensive backdrop-filter count (each translucent surface is a
+     separate composite layer). Applies to FULL + COLLAPSED states.
+     The html.no-transparency escape hatch + perf-low overrides below
+     keep their priority (explicit user intent / perf tier wins). */
+  html.reflection-on .tuner {
+    background: rgba(10,10,10,0.55);
+    box-shadow: 0 -8px 28px rgba(0,0,0,0.28);
+  }
+  html.reflection-on .tuner .tbtn {
+    background: var(--panel);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  /* SCAN-active (fetching) keeps its accent flood, even in reflection mode,
+     because the visual cue matters more than a clean translucent surface. */
+  html.reflection-on .tuner .tbtn.scan.active {
+    background: var(--accent);
+  }
+  /* Collapsed-mobile SCAN stays orange-tile too (set elsewhere at higher
+     specificity with body.tuner-is-collapsed — no override needed here). */
   /* tuner collapse/expand handle — thickened orange strip replaces the 1px top border */
   .tuner-handle {
     position: absolute; top: 0; left: 0; right: 0;
@@ -847,6 +873,13 @@
   .tuner .tuning-strip .strip-top {
     display: flex; justify-content: space-between; align-items: baseline;
     gap: 10px;
+    /* CSS-grid item default is min-width: auto (= min-content). Long track
+       names push strip-top past the tuning-strip's grid track and spill
+       under the transport buttons. Explicit min-width: 0 lets the grid
+       actually shrink it to the track width so the cycler's own ellipsis
+       does its job. */
+    min-width: 0;
+    overflow: hidden;
   }
   .tuner .tuning-strip .strip-top .track-name-cycler {
     color: var(--accent); letter-spacing: 1.5px;
@@ -867,6 +900,12 @@
   .tuner .tuning-bar {
     position: relative; cursor: pointer; height: 26px;
     display: flex; align-items: center;
+    /* Same reason as strip-top — without min-width: 0, the bar ignores its
+       grid track and extends to its children's intrinsic size (ticks row
+       is flex-between with N spans, which has a natural min-content size
+       that's wide). */
+    min-width: 0;
+    overflow: hidden;
   }
   .tuner .tuning-bar::before {
     content: ''; position: absolute; left: 0; right: 0; top: 50%;
@@ -9566,6 +9605,11 @@ const Settings = {
     // mirror the Setting onto it so both the Settings menu and the debug
     // Tweak Lab button resolve to one source of truth.
     if (typeof TerrainDebug !== 'undefined') TerrainDebug.reflection = on;
+    // `html.reflection-on` is a CSS hook — lets the tuner panel drop into a
+    // lighter, top-bar-matching transparency when reflection is live so the
+    // mirrored terrain shows through. Buttons stay opaque (driven by the
+    // same hook) to keep CTAs readable AND cut the backdrop-filter count.
+    document.documentElement.classList.toggle('reflection-on', on);
     document.querySelectorAll('.bar-menu [data-reflection]').forEach(b => {
       b.classList.toggle('active', b.dataset.reflection === this.reflection);
     });
