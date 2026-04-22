@@ -1094,6 +1094,27 @@
   @media (max-width: 520px) {
     .print-overlay .print-box { padding: 12px 18px; max-width: 90vw; margin-top: 15vh; }
   }
+  /* ── Rule 5: print sizing tiers ──────────────────────────────────
+     1 line (default) — natural size, lives above the WSI logo card.
+     2 lines (.print-2line) — same font, slightly tighter line-height so
+       the 2nd line's bottom barely touches the WSI top edge.
+     paragraph (.print-paragraph) — someone pasted prose in. Shrink to
+       9px, stretch to full viewport width, and clip anything past the
+       horizontal red line so the text can't invade the card zone. */
+  .print-overlay .print-box.print-2line {
+    line-height: 1.25;
+  }
+  .print-overlay .print-box.print-paragraph {
+    font-size: 9px !important;
+    letter-spacing: 0.5px;
+    line-height: 1.3;
+    max-width: 100vw;
+    width: 100vw;
+    padding: 6px 12px;
+    margin-top: 8vh;
+    max-height: calc(14vh);      /* clip below this — rest flows past the viewport edge */
+    overflow: hidden;
+  }
   /* print images — inline token <img>filename</img> inside print text. Height
      clamped to --print-img-max-h (live card-body height, updated on resize). */
   .print-overlay .print-box img.print-img {
@@ -1126,6 +1147,32 @@
   }
   .info-btn:hover, .info-btn:focus-visible { background: rgba(0,0,0,0.8); color: var(--fg); outline: none; }
   html.no-transparency .info-btn { background: var(--panel); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  /* ── Unread-updates notification dot ──────────────────────────
+     Pulses accent-colored when there are unread updates. JS adds
+     .has-unread when localStorage['td-radio-updates-read'] doesn't
+     match the current version (handles both a cache-clear and a
+     version bump with the same check). Clicking the [>>>] arrow in
+     the info modal marks current-version as read, which removes the
+     class and hides the dot. */
+  .info-btn .info-dot {
+    position: absolute;
+    top: -3px; right: -3px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent), 0 0 12px var(--accent-dim);
+    display: none;
+    pointer-events: none;
+  }
+  .info-btn.has-unread .info-dot {
+    display: block;
+    animation: info-dot-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes info-dot-pulse {
+    0%, 100% { transform: scale(1);    opacity: 1;   }
+    50%      { transform: scale(1.35); opacity: 0.55;}
+  }
+  .info-btn { position: fixed; }   /* re-assert so the absolute-positioned dot anchors correctly */
 
   /* ── playback info modal (opened by [i] button) ── */
   .playback-info-overlay {
@@ -1170,17 +1217,52 @@
     padding-right: 4px;
     margin-right: -4px;
   }
-  .playback-info-title {
-    font-size: 16px; letter-spacing: 3px; text-transform: uppercase;
-    color: var(--accent);
+  /* Header row: title + nav arrow. Border-bottom lives here so it spans
+     both elements rather than only the title column. */
+  .playback-info-header {
+    display: flex; align-items: flex-start; gap: 10px;
     margin-bottom: 16px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--accent-dim);
+  }
+  .playback-info-title {
+    flex: 1;
+    font-size: 16px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--accent);
   }
   .playback-info-title .pw-sub {
     font-size: 12px; letter-spacing: 1.5px; color: var(--muted);
     text-transform: none; font-weight: normal; display: inline-block; margin-left: 6px;
   }
+  /* Which title span is visible depends on the box's active page. */
+  .playback-info-box[data-page="wobble"]  .pw-title--updates,
+  .playback-info-box[data-page="updates"] .pw-title--wobble  { display: none; }
+  /* Same-for body visibility. */
+  .playback-info-box[data-page="wobble"]  .playback-info-body--updates,
+  .playback-info-box[data-page="updates"] .playback-info-body--wobble  { display: none; }
+
+  /* Nav arrow — flips between >>> (wobble → updates) and <<< (back).
+     Separate from the close button at the bottom so there's no ambiguity
+     between "go to next page" and "dismiss the modal". */
+  .playback-info-nav {
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    padding: 4px 8px;
+    font: inherit; font-size: 11px; letter-spacing: 2px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    transition: filter 0.15s, border-color 0.15s;
+  }
+  .playback-info-nav:hover, .playback-info-nav:focus-visible {
+    filter: brightness(1.3); border-color: var(--accent); outline: none;
+  }
+  /* Arrow glyph swaps via pseudo so JS only has to toggle the data-page. */
+  .playback-info-box[data-page="wobble"]  #playbackInfoNav::before { content: '>>>'; }
+  .playback-info-box[data-page="updates"] #playbackInfoNav::before { content: '<<<'; }
+  .playback-info-nav { font-size: 0; }    /* hide the static label; pseudo supplies it */
+  .playback-info-nav::before { font-size: 11px; letter-spacing: 2px; }
   .playback-info-body {
     font-size: 14.5px; line-height: 1.6; color: var(--fg);
   }
@@ -2352,16 +2434,25 @@
 
 <!-- print overlay (centered, upper-third — fires on timeline 'print' events) -->
 <!-- info button (stacks above the code-key; opens the playback info modal) -->
-<button class="info-btn" id="infoBtn" type="button" aria-label="About playback" title="Info">i</button>
+<button class="info-btn" id="infoBtn" type="button" aria-label="About playback" title="Info">i<span class="info-dot" aria-hidden="true"></span></button>
 
 <!-- playback info modal — opened by the [i] button -->
 <div class="playback-info-overlay" id="playbackInfoOverlay" aria-hidden="true">
-  <div class="playback-info-box" role="dialog" aria-modal="true" aria-labelledby="playbackInfoTitle">
+  <div class="playback-info-box" role="dialog" aria-modal="true" aria-labelledby="playbackInfoTitle" data-page="wobble">
+    <!-- Header strip with title + page-nav arrow. Button is >>> on the wobble
+         page (go to updates) and <<< on updates (back to wobble). Keeps the
+         close button at the bottom, so navigation + close are unambiguous. -->
+    <div class="playback-info-header">
+      <div class="playback-info-title" id="playbackInfoTitle">
+        <span class="pw-title pw-title--wobble">PITCH WOBBLE ON MOBILE <span class="pw-sub">(Most common on iPhone Air)</span></span>
+        <span class="pw-title pw-title--updates">UPDATES <span class="pw-sub">v1.5 &middot; since pitch-wobble notice</span></span>
+      </div>
+      <button class="playback-info-nav" id="playbackInfoNav" type="button" aria-label="Next page">&gt;&gt;&gt;</button>
+    </div>
     <!-- scroll wrapper takes the overflow so the outer box frame stays a
          stable positioning context for the watermark + tooltip anchors -->
     <div class="playback-info-scroll">
-    <div class="playback-info-title" id="playbackInfoTitle">PITCH WOBBLE ON MOBILE <span class="pw-sub">(Most common on iPhone Air)</span></div>
-    <div class="playback-info-body">
+    <div class="playback-info-body playback-info-body--wobble">
       <p><strong>The Situation:</strong><br>
       You might notice the audio briefly speed up or "pitch shift" for a second during playback. Trust me, I hear it too, and as a perfectionist, it bugs the heck out of me. After deep-diving into the code, I've confirmed the source files are 100% healthy &mdash; they play perfectly in FL Studio (that's right) and on desktop browsers.</p>
 
@@ -2382,7 +2473,48 @@
              draggable="false"
              onerror="(function(el){var s=document.createElement('span');s.className='pw-sig-fallback';s.textContent='海流';s.setAttribute('aria-label','dirkanji signature');el.replaceWith(s);})(this)">
       </p>
-    </div>
+    </div><!-- /.playback-info-body--wobble -->
+
+    <!-- ── UPDATES page — visible when data-page="updates" on the box ─── -->
+    <div class="playback-info-body playback-info-body--updates">
+      <p><strong>Since the pitch-wobble write-up,</strong> the player picked up a pile of new tricks. This is the short tour.</p>
+
+      <p><strong>Visuals</strong><br>
+      <strong>SCAN + PLAY</strong> shrank to icon tiles on the mini tuner (the collapsed bottom strip on mobile). On desktop landscape they show icon + label. Either way the track-name readout gets the freed-up space and stretches right up to the time counter.</p>
+
+      <p><strong>Reflection mode</strong> lives in Settings → Waves. Mirrors the waveform below its horizon like a reflective pool — the tuner panel fades to match the top-bar so the whole player reads as a glass floor. Off by default; flip it on when you want the Power PC look.</p>
+
+      <p><strong>Pulse</strong> also in Settings → Waves. FRONT = pulse lands as a thick bright band at the newest row (default). END = pulse surfaces at the deepest row of the terrain instead. Either vibe, your call.</p>
+
+      <p><strong>Under the hood</strong><br>
+      <strong>v1.0 → v1.5</strong>. Real sticker, earned. The little <code>v1.5</code> chip on the WSI logo confirms you're on the current cut.</p>
+
+      <p>Library's now <strong>block-sharded</strong> — the player lazy-loads chunks of 10 tracks instead of the whole dictionary up front. Faster first paint, esp. as the library grows past 50 tracks. Covers a big CF outage too: if the online tier dies, the player falls through to a committed GitHub snapshot so you still hear something.</p>
+
+      <p>Hand-tuned <strong>device profile for iPhone 17 Pro</strong> baked in so it looks right without touching a thing. Other phones + desktop still get sensible defaults.</p>
+
+      <p>Closed a real <strong>XSS hole</strong> in the subtitle renderer — SRT files can't smuggle <code>&lt;script&gt;</code> through the whitelist anymore. Accidentally-clicking-refresh via <strong>pull-to-refresh + double-tap zoom</strong> both disabled on mobile. No more losing your place swiping on a song.</p>
+
+      <p>If you're reading this from inside Instagram, Facebook, or TikTok's built-in browser, a toast nudged you to open in Safari (iOS) or Chrome (Android) — their embedded WebViews throttle audio + animation hard. Safari / Chrome is where the radio really cooks.</p>
+
+      <p><strong>Debug / power users</strong><br>
+      Tap the "RADIO RECEIVER" title bar 7 times fast to open the debug panel. New <strong>Tweak Lab</strong>: Freeze the terrain for static inspection, paint a pulse flash at any depth, uniform Zoom, and reflection detail sliders — Length / Alpha / Fade End / Skew° / Quality / Blur. Live GPU-cost estimate tells you when you've gone too far.</p>
+
+      <p>While the debug panel is open, the screen gets guideline overlays — red dashed lines on the real top/bottom edges of the track card + WSI logo, blue dashed crosshairs at screen center. Helps eyeball alignment without a ruler.</p>
+
+      <p><strong>Small things worth noticing</strong><br>
+      · Settings menu is an accordion now — one section open at a time, smooth slide.<br>
+      · The track card's expand/collapse button is where it is for a reason (visit this modal after cache-clear to see the full guide).<br>
+      · In the Camelot wheel, your current key's wedge glows in accent; harmonically-compatible keys dim with it so you can see mix candidates at a glance.<br>
+      · A small <strong>v1.5</strong> chip lives in the brand plate's corner.</p>
+
+      <p class="pw-regards">
+        Catch you in the mix,<br>
+        <img class="pw-sig" src="./print/dirkanjisigwhite.png" alt="海流"
+             draggable="false"
+             onerror="(function(el){var s=document.createElement('span');s.className='pw-sig-fallback';s.textContent='海流';s.setAttribute('aria-label','dirkanji signature');el.replaceWith(s);})(this)">
+      </p>
+    </div><!-- /.playback-info-body--updates -->
     </div><!-- /.playback-info-scroll -->
     <button class="playback-info-close" id="playbackInfoClose" type="button">[ CLOSE ]</button>
     <!-- Tooltip bubble: absolute-positioned; JS repositions on show so it
@@ -5625,6 +5757,153 @@ function _scaleProfile(prof, s) {
 applyActiveDeviceProfile();
 
 // ══════════════════════════════════════════════════════════════════
+// DEFAULT LAYOUT RULES  (Quadrant-based positioning system)
+// ──────────────────────────────────────────────────────────────────
+// When no custom device profile is active, positions are computed per
+// the screen-quadrant rules:
+//
+//   Rule 1  Track card (body + collapse strip, treated as one object)
+//           — its BOTTOM edge sits on the horizontal center line of
+//           the viewport (x-axis between Q1/Q2 and Q3/Q4).
+//
+//   Rule 2  WSI logo (.brand) — its BOTTOM edge sits on the top edge
+//           of the track card (= Q1 floor). If the numbers collide
+//           and WSI would drop into the same quadrant as the card,
+//           it stacks ON TOP of the card's top edge regardless.
+//
+//   Rule 3  info + code buttons — their TOP edge stays BELOW the
+//           track card's bottom edge. If natural position violates
+//           this, push them further down toward the tuner.
+//
+//   Rule 4  Subtitle stack's top line — top edge stays BELOW the
+//           track card's bottom edge. Defense for tall subtitle
+//           stacks on short viewports.
+//
+//   Rule 5  print() one-liner text — stays above the WSI logo card.
+//           Up to 2 lines allowed; 2nd line bottom barely touches
+//           the WSI line. Paragraphs: drop font to 9px, width 100%,
+//           overflow past the viewport is clipped. (Handled at
+//           render-time in showPrintOverlay — not here.)
+//
+// Profiles (iPhone 17 Pro et al.) bypass this entirely via the
+// `_activeProfile` early-return.
+// ══════════════════════════════════════════════════════════════════
+
+function applyDefaultLayoutRules() {
+  // Profiles own their layout; no runtime rules when one is active.
+  if (_activeProfile) return;
+
+  const card  = document.getElementById('trackCard');
+  const brand = document.getElementById('brand');
+  const info  = document.getElementById('infoBtn');
+  const code  = document.getElementById('codeKey');
+  if (!card || !brand) return;
+
+  const vh      = window.innerHeight;
+  const centerY = Math.round(vh / 2);
+
+  // ── Rule 1: track card bottom = centerY ─────────────────────
+  // track-card is positioned with  top: calc(50% + var(--card-offset-y))
+  // + transform: translateY(-50%) scale(...). Measure current bottom,
+  // compute the delta needed, and nudge --card-offset-y by that delta.
+  {
+    const root = document.documentElement;
+    const currentOffset = parseFloat(getComputedStyle(root).getPropertyValue('--card-offset-y')) || 0;
+    const currBottom    = card.getBoundingClientRect().bottom;
+    const deltaY        = centerY - currBottom;
+    // Avoid thrashing on sub-pixel differences.
+    if (Math.abs(deltaY) > 1) {
+      root.style.setProperty('--card-offset-y', Math.round(currentOffset + deltaY) + 'px');
+    }
+  }
+
+  // Force layout so the next measurement reflects the new offset.
+  void card.offsetHeight;
+
+  // ── Rule 2: WSI logo bottom = card top ──────────────────────
+  // If WSI won't fit above the card without running into the top-bar,
+  // fall back to stacking WSI on top of the card's top edge anyway
+  // (user's tiebreaker: "WSI sits on top of Track card's top edge").
+  {
+    const cardTop   = Math.round(card.getBoundingClientRect().top);
+    const brandH    = brand.getBoundingClientRect().height;
+    const topBarH   = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-bar-h')) || 42;
+    const safeTop   = topBarH + 4;     // a few px clearance under the top-bar
+    // desired WSI bottom = cardTop. In CSS bottom coord: vh - cardTop.
+    let brandBottom = vh - cardTop;
+    // Check if this would put WSI into the top-bar. If so, clamp WSI
+    // so its top is just below the top-bar (shorter brand → less
+    // breathing room, matches user's fallback expectation).
+    const brandTopIfStacked = cardTop - brandH;
+    if (brandTopIfStacked < safeTop) {
+      // Not enough vertical room: WSI's top gets pinned to safeTop,
+      // which may mean WSI's bottom overlaps the card's top edge.
+      // That's the declared tiebreaker.
+      brandBottom = vh - (safeTop + brandH);
+    }
+    document.documentElement.style.setProperty('--brand-bottom', Math.round(brandBottom) + 'px');
+  }
+
+  // ── Rule 3: info + code buttons stay below card bottom ──────
+  // Both are position:fixed with `bottom:` distances from viewport bottom.
+  // Compute the minimum bottom distance that keeps their TOP edge below
+  // the card's bottom (= centerY + margin). If their natural CSS `bottom`
+  // already satisfies the rule, leave it alone.
+  const margin = 8;
+  [info, code].forEach(el => {
+    if (!el) return;
+    const h = el.getBoundingClientRect().height || 28;
+    // Required: el.top >= centerY + margin
+    //           (vh - btm_css - h) >= centerY + margin
+    //           btm_css <= vh - centerY - margin - h
+    const maxAllowedBottom = vh - centerY - margin - h;
+    const r = el.getBoundingClientRect();
+    const currentTop = r.top;
+    if (currentTop < centerY + margin) {
+      // Violates rule → lower the element (reduce its `bottom` distance).
+      el.style.bottom = Math.max(4, Math.round(maxAllowedBottom)) + 'px';
+    } else {
+      // Natural position is fine; release any prior inline override so CSS
+      // media queries + theme rules can breathe back in.
+      el.style.bottom = '';
+    }
+  });
+}
+
+// Rule 4 is mostly structural — subtitle bottom is already tied to the
+// tuner top. On a viewport where tuner top > centerY, the subtitle stack
+// grows upward from just-above-the-tuner and could theoretically cross
+// centerY. That's a degenerate case (very tall tuner or very short
+// viewport); the ellipsis + max-visible-lines cap we already ship handles
+// most real cases. If it becomes a problem we'll shrink subtitle
+// max-visible-lines here dynamically.
+
+// Rule 5 lives in showPrintOverlay (see below) — when print text exceeds
+// 2 lines, it shrinks to 9px / 100% width with overflow clipping.
+
+// ── Lifecycle hooks ──────────────────────────────────────────
+// Runs on boot, window resize, and every tuner state flip so card bottom
+// tracks centerY even when the card's own height changes (collapsed vs
+// expanded body). Profile swaps invalidate this too.
+(function bindDefaultLayoutRules() {
+  // Initial apply — defer a tick so brandlock measurements have settled.
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => requestAnimationFrame(applyDefaultLayoutRules)).catch(() => {});
+  } else {
+    setTimeout(applyDefaultLayoutRules, 300);
+  }
+  window.addEventListener('resize', applyDefaultLayoutRules);
+  // Respond to tuner-is-collapsed class flipping + any other body.class
+  // shift (reflection-on, perf tier changes) that could resize children.
+  new MutationObserver(applyDefaultLayoutRules)
+    .observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  // Track-card's own collapse state mutates its natural height.
+  const card = document.getElementById('trackCard');
+  if (card) new MutationObserver(applyDefaultLayoutRules)
+    .observe(card, { attributes: true, attributeFilter: ['class'] });
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // PERF TIERS — terrain/visuals scale down on low-end devices.
 // Tiers: default → low → lowest. URL override: ?perf=low|lowest|high.
 //   • Boot heuristic (CPU cores + RAM + UA) picks an initial tier.
@@ -7407,6 +7686,33 @@ function showPrintOverlay(text, durationSec) {
   // Always route through renderPrintText — ruby tokens, newlines, and <img>
   // tokens all need it. HTML escaping inside keeps untrusted text safe.
   box.innerHTML = renderPrintText(text);
+
+  // ── Layout Rule 5: print text sizing ─────────────────────────
+  // Reset classes from prior calls (they'd leak between shows otherwise).
+  box.classList.remove('print-2line', 'print-paragraph');
+  // Measure the rendered text height to decide which tier this print falls
+  // into. getBoundingClientRect forces layout — done once per print.
+  // Natural single-line height at the default font-size gives us the
+  // "1 line" yardstick. We compare against that.
+  const oneLineH = parseFloat(getComputedStyle(box).lineHeight) || 20;
+  // Briefly show the element off-screen to measure its real height (opacity
+  // + visibility keep it invisible until we commit .show).
+  const prevVis = box.style.visibility;
+  box.style.visibility = 'hidden';
+  ov.classList.add('show');
+  void box.offsetHeight;   // force layout
+  const renderedH = box.getBoundingClientRect().height;
+  ov.classList.remove('show');
+  box.style.visibility = prevVis || '';
+  // Tiers:  ≤ 1 line  → normal (default)
+  //         ≤ 2 lines → allow (natural)
+  //         > 2 lines → paragraph mode: 9px font, 100% width, clip overflow
+  if (renderedH > oneLineH * 2.4) {
+    box.classList.add('print-paragraph');
+  } else if (renderedH > oneLineH * 1.4) {
+    box.classList.add('print-2line');
+  }
+
   ov.classList.add('show');
   if (_printTimer) clearTimeout(_printTimer);
   const dur = (durationSec != null && durationSec > 0)
@@ -9422,7 +9728,25 @@ const CodesRegistry = {
   const btn = document.getElementById('infoBtn');
   const ov  = document.getElementById('playbackInfoOverlay');
   const closeBtn = document.getElementById('playbackInfoClose');
+  const navBtn   = document.getElementById('playbackInfoNav');
   if (!btn || !ov) return;
+
+  // ── Updates notification dot + read-state tracking ──────────────
+  // The dot on the info button glows until the user visits the Updates
+  // page for the current version. Stored as the version string so a
+  // future version bump re-triggers the dot automatically — a plain
+  // cache-clear (localStorage wipe) does the same since the key is gone.
+  const UPDATES_READ_KEY = 'td-radio-updates-read';
+  function isUnread() {
+    try { return localStorage.getItem(UPDATES_READ_KEY) !== WSI_RADIO_VERSION; }
+    catch (_) { return true; }
+  }
+  function markRead() {
+    try { localStorage.setItem(UPDATES_READ_KEY, WSI_RADIO_VERSION); } catch (_) {}
+    btn.classList.remove('has-unread');
+  }
+  // Initial dot state — decided once on boot.
+  if (isUnread()) btn.classList.add('has-unread');
 
   // "send it my way" tooltip — handled here so modal-close also hides it.
   const tipTrigger = document.getElementById('pwTipTrigger');
@@ -9501,12 +9825,34 @@ const CodesRegistry = {
     });
   }
 
+  // Page navigation — [>>>] flips to Updates, [<<<] flips back. Reaching
+  // the Updates page is what marks the current version as read (removes
+  // the glowing dot on the info button).
+  function setPage(name) {
+    if (!box) return;
+    box.dataset.page = name;
+    // Reset scroll to top so the user lands at the start of whichever
+    // page they just navigated to.
+    const scroll = box.querySelector('.playback-info-scroll');
+    if (scroll) scroll.scrollTop = 0;
+    if (name === 'updates') markRead();
+    if (navBtn) navBtn.setAttribute('aria-label', name === 'wobble' ? 'Next page: Updates' : 'Back to Pitch Wobble');
+  }
+  if (navBtn) {
+    navBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setPage(box.dataset.page === 'wobble' ? 'updates' : 'wobble');
+    });
+  }
+
   const open  = () => { ov.classList.add('open');  ov.setAttribute('aria-hidden', 'false'); };
   const close = () => {
     ov.classList.remove('open'); ov.setAttribute('aria-hidden', 'true');
     // Tooltip lives inside the modal but its show-state should not persist
     // across open/close cycles — collapse it so the next open is clean.
     hideTip();
+    // Reset to the wobble page so the next open lands on the default view.
+    setPage('wobble');
   };
   btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
   if (closeBtn) closeBtn.addEventListener('click', close);
