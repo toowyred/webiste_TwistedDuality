@@ -127,11 +127,9 @@
     border-top: none;
     padding: 10px 6px;
     flex-direction: column; gap: 4px;
-    /* Width is LOCKED by JS to match the Languages section's natural width
-       on first measure (Languages is always-open-first). Prevents the menu
-       from jumping between sizes when the user switches accordion sections.
-       `--bar-menu-w` is the measured value; `200px` is a sane pre-measure
-       fallback that fits every language in the dict. */
+    /* Fixed width — matches Languages' stacked-button layout with room to
+       spare so wider labels in other sections ("Industrial Orange", etc.)
+       wrap comfortably within this locked width. Author-picked constant. */
     width: var(--bar-menu-w, 200px);
     box-sizing: border-box;
   }
@@ -192,11 +190,29 @@
     color: var(--accent);
   }
   .bar-menu .menu-section-body {
-    padding-bottom: 4px;
     /* Stack buttons vertically. Without this, inline-block (browser default
-       for <button>) lets items flow horizontally when the menu has room —
-       which inflates the measured "natural width" of Languages to ~400px. */
+       for <button>) lets items flow horizontally when the menu has room. */
     display: flex; flex-direction: column; gap: 2px;
+    /* ── Slide-up/down animation ─────────────────────────────────────
+       Reuses the card-collapse pattern (max-* + opacity transition). The
+       browser's native <details> behaviour hides content with display: none
+       when closed — we override with `display: flex` above so the closed
+       state just max-heights to 0 and animates gracefully. Overflow hidden
+       while animating, lifted to `visible` at rest via transitionend so
+       focus rings aren't clipped inside buttons. */
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    padding: 0 0 0 0;
+    transition: max-height 0.3s ease, opacity 0.22s ease, padding 0.3s ease;
+  }
+  .bar-menu .menu-section[open] > .menu-section-body {
+    /* 480px is enough for any section's full content (Languages has 5 rows,
+       Waves section has the most items with Pulse + Reflection sub-rows).
+       max-height animates cleanly; actual rendered height = content size. */
+    max-height: 480px;
+    opacity: 1;
+    padding: 0 0 4px 0;
   }
   /* inline row of choice buttons (transparency/waves) */
   .bar-menu .menu-row {
@@ -578,13 +594,32 @@
   }
   .tuner.collapsed .tuner-chev { transform: rotate(180deg); }
 
-  /* collapsed state — hide frequency panel, BPM/KEY/dB row, recalibrate/quality, and transport spacer.
-     Keep visible: cycler + time + tuning-bar + SCAN + PLAY. */
+  /* Collapsed state — hide frequency panel, BPM/KEY/dB row, recalibrate/
+     quality, and transport spacer. Keep visible: cycler + time + tuning-bar
+     + SCAN + PLAY.
+     Animation reuses the card-collapse pattern: transition opacity +
+     max-height + margin on the hidden children so they slide out (and
+     slide back in on expand). `display: none` is avoided — it would kill
+     the transition — in favour of collapsing to zero height + opacity. */
+  .tuner              { transition: height 0.32s ease; }
+  .tuner .frequency-panel,
+  .tuner .strip-bot,
+  .tuner .quality,
+  .tuner .t-spacer {
+    transition: opacity 0.25s ease, max-height 0.32s ease, margin 0.3s ease;
+    max-height: 200px;     /* covers the tallest (quality row with label) */
+    overflow: hidden;
+  }
   .tuner.collapsed              { height: auto; grid-template-columns: 1fr auto; }
   .tuner.collapsed .frequency-panel,
   .tuner.collapsed .strip-bot,
   .tuner.collapsed .quality,
-  .tuner.collapsed .t-spacer    { display: none; }
+  .tuner.collapsed .t-spacer {
+    opacity: 0;
+    max-height: 0;
+    margin: 0;
+    pointer-events: none;   /* prevent accidental taps on invisible content */
+  }
 
   /* SCAN first-run attention pulse — removed after first successful track load.
      Orange theme: glow in accent color.
@@ -5975,66 +6010,8 @@ barMenu.querySelectorAll('.menu-section').forEach(d => {
   });
 });
 
-// ── Lock bar-menu width to Languages' natural size ─────────────
-// Languages is the accordion section that's open on boot. Measuring its
-// intrinsic width gives us the "base" size the menu should stay at — other
-// sections (Themes / Transparency / Waves) might have naturally-wider
-// buttons (e.g. "Industrial Orange") but should WRAP inside this locked
-// width rather than re-flowing the entire panel each time the user
-// expands a different section. Runs after fonts load so the measurement
-// reflects the final typography.
-(function lockBarMenuWidth() {
-  const measure = () => {
-    // We want the width of the menu with ONLY the Languages section visible —
-    // it's the "baseline" width the menu should stay at forever. Wider
-    // sections (Themes' "Industrial Orange" etc.) wrap into this width via
-    // the .menu-section-body button { white-space: normal } rule.
-    const sections     = [...barMenu.querySelectorAll('.menu-section')];
-    const savedOpenSet = sections.map(s => s.open);
-    // Force Languages-only visible for the measurement pass.
-    sections.forEach((s, i) => {
-      const label = s.querySelector('summary')?.textContent.trim() || '';
-      s.open = (label === 'Languages');
-    });
-    // Make the menu visible off-screen at natural width.
-    const wasOpen  = barMenu.classList.contains('open');
-    const save = {
-      left:       barMenu.style.left,
-      right:      barMenu.style.right,
-      visibility: barMenu.style.visibility,
-      width:      barMenu.style.width,
-    };
-    barMenu.style.visibility = 'hidden';
-    barMenu.style.left       = '-9999px';
-    barMenu.style.right      = 'auto';
-    barMenu.style.width      = 'auto';
-    barMenu.classList.add('open');
-    // Force reflow so offsetWidth reflects the new open+natural layout.
-    void barMenu.offsetWidth;
-    const w = Math.ceil(barMenu.getBoundingClientRect().width);
-    // Restore EVERYTHING — classes, inline styles, section open states.
-    if (!wasOpen) barMenu.classList.remove('open');
-    barMenu.style.left       = save.left;
-    barMenu.style.right      = save.right;
-    barMenu.style.visibility = save.visibility;
-    barMenu.style.width      = save.width;
-    sections.forEach((s, i) => { s.open = savedOpenSet[i]; });
-    if (w > 0) {
-      document.documentElement.style.setProperty('--bar-menu-w', w + 'px');
-    }
-  };
-  // Wait for fonts + a frame so the measurement reflects final typography.
-  if (document.fonts && document.fonts.ready) {
-    document.fonts.ready.then(() => requestAnimationFrame(measure)).catch(measure);
-  } else {
-    requestAnimationFrame(measure);
-  }
-  // Re-measure on lang swap (button labels change — "Deutsch" may be wider
-  // than "English" etc.). applyLang doesn't know about this; MutationObserver
-  // on <html lang> is the simplest cross-hook.
-  new MutationObserver(() => requestAnimationFrame(measure))
-    .observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
-})();
+// bar-menu width is now a fixed 200px via the --bar-menu-w CSS var (see
+// .bar-menu rule). No JS measurement needed.
 document.querySelectorAll('.bar-menu [data-lang-btn]').forEach(b => {
   b.addEventListener('click', () => {
     applyLang(b.dataset.langBtn);
