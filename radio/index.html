@@ -1365,6 +1365,7 @@
     display: flex; justify-content: space-between; align-items: center;
   }
   .debug-close { cursor: pointer; color: var(--muted); font-size: 16px; line-height: 1; padding: 0 4px; }
+  .debug-version { flex: 1; text-align: right; color: var(--muted); font-size: 9px; letter-spacing: 1.5px; font-family: 'Courier New', monospace; }
   .debug-close:hover { color: var(--fg); }
   /* collapsible sections via <details>/<summary> — click header to toggle */
   .debug-panel details { margin-top: 8px; }
@@ -1917,18 +1918,18 @@
     <div class="playback-info-title" id="playbackInfoTitle">PITCH WOBBLE ON MOBILE <span class="pw-sub">(Most common on iPhone Air)</span></div>
     <div class="playback-info-body">
       <p><strong>The Situation:</strong><br>
-      You might notice the audio briefly speed up or "pitch shift" for a second before settling back into the groove. Trust me, I hear it too, and as a perfectionist, it bugs the heck out of me. After deep-diving into the code, I've confirmed the source files are 100% healthy &mdash; they play perfectly in FL Studio and on desktop browsers.</p>
+      You might notice the audio briefly speed up or "pitch shift" for a second during playback. Trust me, I hear it too, and as a perfectionist, it bugs the heck out of me. After deep-diving into the code, I've confirmed the source files are 100% healthy &mdash; they play perfectly in FL Studio (that's right) and on desktop browsers.</p>
 
       <p><strong>The "Science" behind the struggle:</strong><br>
-      It comes down to the mobile device's audio stack. When the browser tries to manage dynamic BPM variations or handles background tasks (like switching apps), the system tries to "catch up" to the buffer. It's like the device is tripping on its own feet for a split second before finding its rhythm again.</p>
+      It comes down to the mobile device's audio stack. When the browser tries to manage dynamic BPM variations or handles background render tasks (like switching apps), the system tries to "catch up" to the buffer. It's like the device is tripping on its own feet, pre-drop paranoia from BPM changes for a split second before finding its rhythm again.</p>
 
       <p><strong>The Game Plan:</strong><br>
-      I've pinned <code>playbackRate</code> to <code>1.0</code>, ensured the fetch is buffer-complete before playback starts, and verified no encoding anomalies in the file. The browser's <code>currentTime</code> still tracks accurately the whole way through &mdash; no seconds are lost &mdash; which is why lock-screen scrubbing and the tuning bar stay in perfect sync even when you hear the wobble. The glitch is purely in the output render, not the timeline. But this specific wobble is a limitation of mobile browser architecture that's currently outside my reach as a solo dev.</p>
+      I've pinned <code>playbackRate</code> to <code>1.0</code>, ensured the fetch is buffer-complete before playback starts, and verified no encoding anomalies in the file. The browser's <code>currentTime</code> still tracks accurately the whole way through, no seconds are lost which is why lock-screen scrubbing and the tuning bar stay in perfect sync even when you hear the wobble. But this specific wobble is a limitation of mobile browser architecture that's currently outside my reach as a solo dev.</p>
 
       <p><strong>Pro Tip for Pristine Gains:</strong><br>
-      If you want that 1:1 studio-quality experience without the mobile jitters, <strong>Desktop</strong> is your best bet. Or better yet, if you're a producer/DJ, pull out a real DAW or <strong>a deck</strong> and start <strong>cooking</strong>.</p>
+      If you want that 1:1 studio-quality experience without the mobile jitters, <strong>Desktop</strong> is your best bet. Or better yet, if you're a producer/DJ, pull out a real DAW or <strong>a deck</strong> and start <strong>cooking</strong>.</p>
 
-      <p>If you create a blend or a transition that goes hard, send it my way! I'm more of a computer guy than a producer and always stoked to see people cooking up with sick beats.</p>
+      <p>If you create a blend or a transition that goes hard, send it my way! I'm more of a computer guy than a producer and always stoked to see people cooking up with sick beats.</p>
     </div>
     <button class="playback-info-close" id="playbackInfoClose" type="button">[ CLOSE ]</button>
     <div class="playback-info-watermark" id="playbackInfoWatermark" data-i18n="pw-watermark" aria-hidden="true">WAVE-ISOLATE RADIO RECEIVER v1.0</div>
@@ -1982,7 +1983,7 @@
 <div class="subtitle-stack" id="subtitleStack" aria-hidden="true"></div>
 <!-- debug panel — 5-tap on "RADIO RECEIVER" title OR ?subdbg=1 -->
 <div class="debug-panel" id="debugPanel">
-  <div class="debug-title">DEBUG <span class="debug-close" id="debugClose">&times;</span></div>
+  <div class="debug-title">DEBUG <span class="debug-version" id="debugVersion" translate="no"></span> <span class="debug-close" id="debugClose">&times;</span></div>
 
   <details>
     <summary>Track Card</summary>
@@ -2136,6 +2137,142 @@
 'use strict';
 
 // ══════════════════════════════════════════════════════════════════
+// VERSION
+// ──────────────────────────────────────────────────────────────────
+// Single source of truth for the "v1.0" stamp. Surfaced in three places:
+//   · brand chip        — .ver-badge innerText (set on boot)
+//   · modal watermark   — not templated here; the i18n strings bake the version
+//                         into the localized WAVE・ISOLATE string so they stay
+//                         authored-typographically (e.g. Japanese spacing)
+//   · debug panel       — version row; also logged once to console on boot
+//   · global            — window.__WSI_RADIO_VERSION__ for external tooling
+// Bump this on every release; keep in sync with the i18n 'pw-watermark'
+// strings (see I18N dict) when the version changes.
+// ══════════════════════════════════════════════════════════════════
+const WSI_RADIO_VERSION   = '1.0';
+const WSI_RADIO_BUILD_DATE = '2026-04-22';
+window.__WSI_RADIO_VERSION__  = WSI_RADIO_VERSION;
+window.__WSI_RADIO_BUILD_DATE__ = WSI_RADIO_BUILD_DATE;
+
+// ══════════════════════════════════════════════════════════════════
+// CACHE-BUSTER
+// ──────────────────────────────────────────────────────────────────
+// Cloudflare edges serve `.dat` + `.srt` files with heavy caching, and we
+// hit "did I forget to purge" bugs repeatedly. Solution: append a stable
+// `?v=<build>` query string to every metadata-style fetch so each release
+// invalidates the cache automatically. Audio files are NOT included —
+// the signed URL already has a time-based query, and adding another
+// parameter would bust the HMAC on the Worker side.
+//
+// Pass-through if the URL already has a query string matching the build
+// (idempotent) OR if it points at a signed R2 URL (preserves ?t=&e=).
+// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
+// ERROR TELEMETRY — fire-and-forget beacon to a Worker endpoint
+// ──────────────────────────────────────────────────────────────────
+// Reports boot failures + uncaught JS errors + unhandled promise rejections
+// so we learn about breakage without relying on users to report it. Privacy:
+// only the minimum needed to triage — version, kind, message, UA, timestamp.
+// No IP, no URL, no user input. Uses `navigator.sendBeacon` when available
+// (survives page unload) + `fetch(..., keepalive)` fallback.
+//
+// Endpoint is configurable:
+//   • ErrTelemetry.endpoint — override at runtime for testing
+//   • Leave empty string      — telemetry disabled (default for dev / local)
+//   • Set to the Worker URL   — enables real shipping
+//
+// De-dup window: identical (kind + message) within 30 s fires once.
+// ══════════════════════════════════════════════════════════════════
+const ErrTelemetry = {
+  endpoint: '',   // e.g. 'https://td-webanalytics.midcember.workers.dev/radio/err'
+  _seen: new Map(),   // key → timestamp
+  _DEDUP_MS: 30_000,
+
+  ping(kind, message, extra) {
+    if (!this.endpoint) return;
+    const now = Date.now();
+    const dedupKey = (kind || '') + '|' + String(message || '').slice(0, 120);
+    const last = this._seen.get(dedupKey);
+    if (last && now - last < this._DEDUP_MS) return;
+    this._seen.set(dedupKey, now);
+    // Prune old entries occasionally so the map doesn't grow unbounded.
+    if (this._seen.size > 50) {
+      for (const [k, t] of this._seen) {
+        if (now - t > this._DEDUP_MS) this._seen.delete(k);
+      }
+    }
+    const payload = {
+      v: WSI_RADIO_VERSION,
+      build: WSI_RADIO_BUILD_DATE,
+      kind: String(kind || 'unknown').slice(0, 40),
+      msg: String(message || '').slice(0, 240),
+      ua: (navigator.userAgent || '').slice(0, 200),
+      lang: document.documentElement.lang || 'en',
+      tier: (typeof Registry !== 'undefined' && Registry.source) ? Registry.source.id : null,
+      usingBlocks: !!(typeof Registry !== 'undefined' && Registry.usingBlocks),
+      t: now,
+    };
+    if (extra && typeof extra === 'object') {
+      try { payload.extra = JSON.stringify(extra).slice(0, 240); } catch (_) { /* ignore */ }
+    }
+    const body = JSON.stringify(payload);
+    try {
+      if (navigator.sendBeacon) {
+        const ok = navigator.sendBeacon(this.endpoint, new Blob([body], { type: 'application/json' }));
+        if (ok) return;
+      }
+    } catch (_) { /* fall through */ }
+    try {
+      fetch(this.endpoint, { method: 'POST', body, keepalive: true, mode: 'no-cors', headers: { 'Content-Type': 'application/json' } }).catch(() => {});
+    } catch (_) { /* silent — telemetry is best-effort by design */ }
+  }
+};
+
+// Global error hook — uncaught JS + unhandled promise rejections.
+window.addEventListener('error', (ev) => {
+  try {
+    const msg = (ev.error && ev.error.message) || ev.message || 'error';
+    const where = ev.filename ? (ev.filename + ':' + ev.lineno + ':' + ev.colno) : '';
+    ErrTelemetry.ping('uncaught', msg, { where });
+  } catch (_) {}
+});
+window.addEventListener('unhandledrejection', (ev) => {
+  try {
+    const r = ev && ev.reason;
+    const msg = (r && (r.message || r.toString())) || 'rejection';
+    ErrTelemetry.ping('rejection', msg);
+  } catch (_) {}
+});
+
+function cbUrl(url) {
+  if (!url) return url;
+  const s = String(url);
+  // Signed R2 URLs already carry ?t=<token>&e=<expiry>; don't add anything
+  // that would break the HMAC calculation on the Worker side.
+  if (/[?&]t=[^&]+&e=\d+/.test(s)) return s;
+  // Already has our cache-buster? Leave alone.
+  if (s.indexOf('v=' + WSI_RADIO_VERSION) >= 0) return s;
+  const sep = s.indexOf('?') >= 0 ? '&' : '?';
+  return s + sep + 'v=' + WSI_RADIO_VERSION;
+}
+
+// ASCII art + colored console banner. Runs once at script parse. Intentionally
+// loud so anyone opening DevTools immediately knows what's running + which
+// version. Keep short — this is the business card, not the docs.
+(function _bootBanner() {
+  const css = [
+    'background:#de7029; color:#000; font-weight:bold; padding:2px 8px; font-size:12px;',
+    'color:#de7029; font-weight:bold; padding:2px 8px; font-size:12px;',
+    'color:#888; font-size:11px;',
+  ];
+  console.log(
+    '%c WSI RADIO %c v' + WSI_RADIO_VERSION + ' %c · ' + WSI_RADIO_BUILD_DATE +
+    ' · twysted.afest.io/radio/',
+    css[0], css[1], css[2]
+  );
+})();
+
+// ══════════════════════════════════════════════════════════════════
 // CONFIG
 // ══════════════════════════════════════════════════════════════════
 const CFG = {
@@ -2213,7 +2350,7 @@ const I18N = {
     'm-access': 'ACCESS',
     'm-origin': 'ORIGIN',
     'constructed-by': 'Constructed by',
-    'pw-watermark': 'WAVE-ISOLATE RADIO RECEIVER v1.0',
+    'pw-watermark': 'WAVE・ISOLATE RADIO RECEIVER v1.0',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'KEY',
@@ -2226,7 +2363,7 @@ const I18N = {
     'q-highfi': 'HI-FI',
     'tuning-in': 'TUNING IN',
     'contacting': 'CONTACTING TRANSMITTER',
-    'rescue-msg': 'Stuck here? Signal may be weak — reach us directly:',
+    'rescue-msg': 'Stuck here? Signal to server may be lost — please reach us directly:',
     'offline-mode': 'FALLBACK · OFFLINE SIGNAL',
     'on-air': 'ON-AIR',
     'scanning': 'SCANNING',
@@ -2234,8 +2371,8 @@ const I18N = {
     'failed': 'TRANSMISSION FAILED',
     'corrupted': 'CORRUPTED TRANSMISSION',
     'help-hint': 'Tap again if <span translate="no">meta-data</span> is incorrect.',
-    'meta-refreshed': 'METADATA REFRESHED',
-    'meta-refreshing': 'REFRESHING METADATA...',
+    'meta-refreshed': 'META-DATA REFRESHED',
+    'meta-refreshing': 'REFRESHING META-DATA...',
     'camelot-now': 'Now playing:',
     'camelot-current': 'current',
     'camelot-compat': 'harmonic match',
@@ -2679,12 +2816,53 @@ function _normalizeGlobalKey(k) {
   return k;
 }
 
+// ── Strict-mode known-key allowlist ─────────────────────────────
+// Any field key seen at parse time that is NOT in one of these sets gets
+// emitted as a single grouped warning at end of parse. Helps catch typos
+// in hand-edited shards before they silently render as "unknown" in the
+// card. `WebAudio_*` and `offline.*` variants + any `*.line1/line2` keys
+// pass through as-is (glob-style check, not exhaustive enumeration).
+const KNOWN_TRACK_FIELDS = new Set([
+  'signal','decoder','status','access','origin','vibe',
+  'start','startsec','silent','silentranges',
+  'srt.sub','srt.print',
+  'webaudio_track','webaudio_artist','webaudio_album',
+  'message',
+  // These get auto-derived by the parser but may appear via refresh paths:
+  'wsi.line1','wsi.line2',
+  // Global-block keys pass through the same meta pipe before being promoted
+  // to Registry.globals at end of parse — allowlist them here so they don't
+  // trip the strict-mode warning.
+  'cycler.tick','print.default','crossfade.ms','crossfade.noise','teaser.sec',
+  'cyclertick','printdefault','crossfadems','internoiselevel','teasersec',
+]);
+const KNOWN_TIMED_FIELDS = new Set([
+  'signal','decoder','origin','vibe','status','access',
+  'wsi.line1','wsi.line2','print',
+]);
+function _isKnownTrackField(k) {
+  if (!k) return false;
+  const lk = k.toLowerCase();
+  if (KNOWN_TRACK_FIELDS.has(lk)) return true;
+  if (lk.startsWith('offline.')) return true;      // any offline.<field>
+  if (lk.startsWith('webaudio_')) return true;     // WebAudio_* family
+  return false;
+}
+function _isKnownTimedField(k) {
+  if (!k) return false;
+  return KNOWN_TIMED_FIELDS.has(k.toLowerCase());
+}
+
 function parseSignalDat(text) {
   const blocks = text.split(/={5,}/).map(b => b.trim()).filter(b => b);
   const tracks = [];
   // Global config block: any block with no File: entries, no offline.file, and no timeline
   // events contributes its key=value lines to this globals bag (e.g. cyclerTick=4.2).
   const globals = {};
+  // Strict-mode: collect unknown keys per parse and emit ONE warning at end
+  // (not per-line — would flood the console on a large shard).
+  const _unknownTrackKeys = new Set();
+  const _unknownTimedKeys = new Set();
   for (const block of blocks) {
     const lines = block.split(/\r?\n/).map(l => l.trim()).filter(l => l);
     const files = [];
@@ -2709,6 +2887,7 @@ function parseSignalDat(text) {
         const field = _normalizeFieldKey(m[1].toLowerCase());
         const time = parseTimeToken(m[2].toLowerCase(), m[3]);
         if (!isFinite(time)) continue;
+        if (!_isKnownTimedField(field)) _unknownTimedKeys.add(field);
         if (field === 'print') {
           // value format:  "text" or "text; d=3" / "text; d=3sec"
           const parts = value.split(/\s*;\s*/);
@@ -2731,7 +2910,9 @@ function parseSignalDat(text) {
       } else {
         // Normalize legacy key forms to the dot convention on ingest — one touch
         // here means the rest of the codebase reads a single canonical name.
-        meta[_normalizeFieldKey(key)] = value;
+        const normKey = _normalizeFieldKey(key);
+        if (!_isKnownTrackField(normKey)) _unknownTrackKeys.add(normKey);
+        meta[normKey] = value;
       }
     }
     timeline.sort((a, b) => a.time - b.time);
@@ -2756,6 +2937,16 @@ function parseSignalDat(text) {
       // Registry.init reads. Legacy camelCase passes through unchanged.
       for (const k in meta) globals[_normalizeGlobalKey(k)] = meta[k];
     }
+  }
+  // Strict-mode summary: unknown keys accumulated across all tracks / the
+  // globals block. ONE line per category, sorted for diff-friendliness.
+  // Harmless at runtime — the keys still get stored in meta/timeline — but
+  // surfaces typos before they ship silently as "unknown" card rows.
+  if (_unknownTrackKeys.size) {
+    console.warn('[dat] unknown base field(s):', [...(_unknownTrackKeys)].sort().join(', '));
+  }
+  if (_unknownTimedKeys.size) {
+    console.warn('[dat] unknown timed field(s):', [...(_unknownTimedKeys)].sort().join(', '));
   }
   return { tracks, globals };
 }
@@ -2825,7 +3016,7 @@ const Registry = {
         const blocksIdxUrl = blocksBase + 'index.dat';
         let blocksIdxText = null;
         try {
-          const r = await fetch(blocksIdxUrl, { cache: 'no-cache' });
+          const r = await fetch(cbUrl(blocksIdxUrl), { cache: 'no-cache' });
           if (r.ok) blocksIdxText = await r.text();
         } catch (_) { /* network / offline / 404 — silent fall-through */ }
 
@@ -2836,7 +3027,7 @@ const Registry = {
             BlockRegistry.blocksBase = blocksBase;
             // Globals live separately in blocks/globals.dat.
             try {
-              const gr = await fetch(blocksBase + 'globals.dat', { cache: 'no-cache' });
+              const gr = await fetch(cbUrl(blocksBase + 'globals.dat'), { cache: 'no-cache' });
               if (gr.ok) {
                 const gt = await gr.text();
                 const pg = parseSignalDat(gt);
@@ -2867,7 +3058,7 @@ const Registry = {
         // ── Legacy cf-signal.dat flow (unchanged from v1). Kicks in when
         //    blocks/index.dat doesn't exist in this tier — i.e. you haven't
         //    run build-blocks.py, or the blocks tree hasn't been uploaded yet.
-        const res = await fetch(src.signal, { cache: 'no-cache' });
+        const res = await fetch(cbUrl(src.signal), { cache: 'no-cache' });
         if (!res.ok) throw new Error(src.id + ' signal ' + res.status);
         const text = await res.text();
         const parsed = parseSignalDat(text);
@@ -2889,6 +3080,10 @@ const Registry = {
     this.source = null;
     this.tracks = [];
     console.error('[radio] no signal source reachable');
+    if (typeof ErrTelemetry !== 'undefined') {
+      ErrTelemetry.ping('boot-fatal', 'no signal source reachable',
+        { tried: SOURCES.map(s => s.id) });
+    }
   },
 
   metaFor(idx, key) {
@@ -3251,7 +3446,7 @@ const BlockRegistry = {
 
   async _fetchAndApply(url, kind) {
     try {
-      const res = await fetch(url, { cache: 'no-cache' });
+      const res = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!res.ok) return;
       const text = await res.text();
       this._apply(kind, text);
@@ -3347,7 +3542,7 @@ const BlockRegistry = {
         if (!entry.files.has(kind)) continue;
         const url = this.blocksBase + this._shardName(kind, num);
         tasks.push(
-          fetch(url, { cache: 'no-cache' })
+          fetch(cbUrl(url), { cache: 'no-cache' })
             .then(r => r.ok ? r.text() : null)
             .then(text => { if (text) this._applyRefresh(kind, text); })
             .catch(() => {/* silent — optional shard */})
@@ -4421,6 +4616,16 @@ const BrandLock = {
 };
 BrandLock.initAfterFonts();
 
+// Bind version string into all surfaces that display it. Runs early (before
+// BrandLock.lockDims fires) so the chip width is captured with the final text.
+(function _paintVersion() {
+  const label = 'v' + WSI_RADIO_VERSION;
+  const chip  = document.getElementById('brandVer');
+  if (chip) chip.textContent = label;
+  const dbg   = document.getElementById('debugVersion');
+  if (dbg)  dbg.textContent  = label + '  ·  ' + WSI_RADIO_BUILD_DATE;
+})();
+
 // Waveform CFG presets — applied at boot based on viewport/orientation.
 // Does not live-migrate across breakpoint resizes; debug panel handles per-device tuning after.
 (function applyDevicePreset() {
@@ -5032,7 +5237,7 @@ async function refetchSignalMeta() {
     // crossfadeMs / cyclerTick / printDefault edits land.
     try {
       const gurl = BlockRegistry.blocksBase + 'globals.dat';
-      const gres = await fetch(gurl, { cache: 'no-cache' });
+      const gres = await fetch(cbUrl(gurl), { cache: 'no-cache' });
       if (gres.ok) {
         const gtext = await gres.text();
         const gparsed = parseSignalDat(gtext);
@@ -5050,7 +5255,7 @@ async function refetchSignalMeta() {
   }
 
   // Legacy cf-signal.dat monolith path (non-blocks tiers).
-  const res = await fetch(Registry.source.signal, { cache: 'no-cache' });
+  const res = await fetch(cbUrl(Registry.source.signal), { cache: 'no-cache' });
   if (!res.ok) return false;
   const text = await res.text();
   const parsed = parseSignalDat(text);
@@ -5857,7 +6062,7 @@ const SubtitleRunner = {
     const base = Registry.source.signal.replace(/[^/]+$/, 'srt/');
     const url = base + fileName;
     try {
-      const res = await fetch(url, { cache: 'no-cache' });
+      const res = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!res.ok) return;            // file absent → silent no-op
       const text = await res.text();
       this.cues = parseSRT(text);
@@ -5962,7 +6167,7 @@ const SrtPrintRunner = {
     const url = srtBase + fileName;
     let cues;
     try {
-      const res = await fetch(url, { cache: 'no-cache' });
+      const res = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!res.ok) return;                   // file absent → silent
       const text = await res.text();
       cues = parseSRT(text);
@@ -6028,7 +6233,7 @@ const PrintImages = {
     if (!Registry.source) return;
     this.base = Registry.source.signal.replace(/[^/]+$/, 'print/');
     try {
-      const r = await fetch(this.base + 'index.json', { cache: 'no-cache' });
+      const r = await fetch(cbUrl(this.base + 'index.json'), { cache: 'no-cache' });
       if (!r.ok) return;       // no manifest → no images; tokens render as [img:name] placeholders
       const data = await r.json();
       if (Array.isArray(data)) this.manifest = data;
@@ -7322,6 +7527,44 @@ function updateDbReadout(freq) {
   clearInterval(dotsTimer);
   hideLoading();
 
+  // ── Structured boot summary ─────────────────────────────────────
+  // Fires once after every registry has settled. Gives ops a single
+  // grep-friendly line showing tier, mode, block manifest, track count,
+  // and feature flags. Pair with the top-of-file banner for a full trace.
+  try {
+    const tier = Registry.source ? Registry.source.id : '(none)';
+    const mode = Registry.mode || '(unknown)';
+    const manifestSummary = (Registry.usingBlocks && typeof BlockRegistry !== 'undefined')
+      ? BlockRegistry.manifest.map(b => 'b' + String(b.num).padStart(2,'0') + '(' + b.count + ')').join(',')
+      : 'n/a';
+    const loadedBlocks = (Registry.usingBlocks && typeof BlockRegistry !== 'undefined')
+      ? [...BlockRegistry.loaded].map(n => 'b' + String(n).padStart(2,'0')).join(',') || '(none)'
+      : 'n/a';
+    const synthetics = Registry.tracks.filter(t => t && t.meta && t.meta._synthetic).length;
+    const codesCount = (typeof CodesRegistry !== 'undefined' && CodesRegistry.map)
+      ? Object.keys(CodesRegistry.map).length : 0;
+    const rhythmCount = (typeof BeatsRegistry !== 'undefined' && BeatsRegistry.map)
+      ? Object.keys(BeatsRegistry.map).length : 0;
+    console.log(
+      '[boot] tier=' + tier +
+      ' mode=' + mode +
+      ' usingBlocks=' + !!Registry.usingBlocks +
+      ' manifest=[' + manifestSummary + ']' +
+      ' loaded=[' + loadedBlocks + ']' +
+      ' tracks=' + Registry.tracks.length +
+      ' synthetics=' + synthetics +
+      ' rhythm=' + rhythmCount +
+      ' codes=' + codesCount +
+      ' perf=' + (document.documentElement.classList.contains('perf-lowest') ? 'lowest'
+                : document.documentElement.classList.contains('perf-low')    ? 'low'
+                : document.documentElement.classList.contains('perf-high')   ? 'high'
+                : 'mid') +
+      ' theme=' + (document.documentElement.getAttribute('data-theme') || '(none)') +
+      ' lang=' + (document.documentElement.lang || 'en') +
+      ' v=' + WSI_RADIO_VERSION
+    );
+  } catch (_) { /* best-effort; don't break boot */ }
+
   // Periodic "there's a button here" glare on the KEY readout. Stops forever
   // once the user clicks the readout (they've discovered it).
   if (typeof KeyGlare !== 'undefined') KeyGlare.start();
@@ -7340,7 +7583,7 @@ const LinksRegistry = {
     const signalUrl = Registry.source.signal;
     const linksUrl = signalUrl.replace(/[^/]+$/, 'track-links.dat');
     try {
-      const res = await fetch(linksUrl, { cache: 'no-cache' });
+      const res = await fetch(cbUrl(linksUrl), { cache: 'no-cache' });
       if (!res.ok) return;
       const text = await res.text();
       this.parse(text);
@@ -7431,7 +7674,7 @@ const LockedRegistry = {
     if (!Registry.source) return;
     const url = Registry.source.signal.replace(/[^/]+$/, 'locked.dat');
     try {
-      const r = await fetch(url, { cache: 'no-cache' });
+      const r = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!r.ok) return;
       const text = await r.text();
       this._parse(text);
@@ -7634,7 +7877,7 @@ const ScanSkipRegistry = {
     const base = Registry.source.audioBase;                // .../tracks/
     const url  = base + 'scan-skip.dat';
     try {
-      const r = await fetch(url, { cache: 'no-cache' });
+      const r = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!r.ok) return;
       const text = await r.text();
       this._parse(text);
@@ -7697,7 +7940,7 @@ const BeatsRegistry = {
     const base = Registry.source.audioBase;                // .../tracks/
     const url  = base + 'cf-rhythm.dat';
     try {
-      const r = await fetch(url, { cache: 'no-cache' });
+      const r = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!r.ok) return;
       this._parse(await r.text());
     } catch (_) { /* silent — rhythm data is optional */ }
@@ -7904,7 +8147,7 @@ const CodesRegistry = {
     if (!Registry.source) return;
     const url = Registry.source.signal.replace(/[^/]+$/, 'codes.dat');
     try {
-      const r = await fetch(url, { cache: 'no-cache' });
+      const r = await fetch(cbUrl(url), { cache: 'no-cache' });
       if (!r.ok) return;
       const text = await r.text();
       for (const line of text.split(/\r?\n/)) {
