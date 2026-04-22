@@ -5009,6 +5009,208 @@ BrandLock.initAfterFonts();
 })();
 
 // ══════════════════════════════════════════════════════════════════
+// DEVICE PROFILES — hand-tuned values, per exact hardware class.
+// ──────────────────────────────────────────────────────────────────
+// Authors tweak values in the debug panel, then bake the final set into
+// a profile here so every visitor on that device class lands in a clean
+// reference layout without the debug panel open.
+//
+// URL overrides (for testing without the physical device):
+//   ?devprofile=ip17pro                  → force iPhone 17 Pro profile
+//   ?devprofile=ip17promax-scale         → opt-in Pro Max proportional scale
+//   ?devprofile=none                     → skip all profiles
+//
+// Detection is viewport + DPR based (Apple doesn't expose the model id
+// to JS; iPhone 16 Pro and 17 Pro share the 402×874 @ 3x class and the
+// same profile applies well to both).
+// ══════════════════════════════════════════════════════════════════
+const DeviceProfiles = {
+  // Hand-tuned by the author on an iPhone 17 Pro (A3256, all colors).
+  // Shared base (applies regardless of tuner state), then FULL + MINI
+  // overrides for the values that change when the tuner collapses.
+  iPhone17Pro: {
+    name: 'iPhone 17 Pro',
+    base: {
+      css: {
+        '--card-scale':        '0.75',
+        '--card-offset-x':     '0px',
+        '--card-body-max':     '65vw',
+        '--card-font-size':    '15px',
+        '--card-strip-w':      '30px',
+        '--subtitle-font-size':'9px',
+        '--subtitle-gap':      '4px',
+        '--subtitle-extra':    '0px',
+        '--brand-right':       '2px',
+        '--brand-scale':       '0.5',
+      },
+      cfg: {
+        _posX: 1, _width: 66,
+        isoOffsetX: 2.4, isoOffsetY: 3.3,
+        heightScale: 2.5, terrainLines: 100,
+        lineWidth: 1, pushEvery: 2,
+      },
+      terrainZoom: 0.95,
+    },
+    full: {
+      css: {
+        '--card-offset-y':     '-65px',
+        '--subtitle-padding-y':'4px',
+        '--subtitle-padding-x':'20px',
+        '--subtitle-width':    '95vw',
+        '--brand-bottom':      '474px',
+      },
+      cfg: { _posY: 94 },
+    },
+    mini: {   // when  body.tuner-is-collapsed
+      css: {
+        '--card-offset-y':     '38px',
+        '--subtitle-padding-y':'7px',
+        '--subtitle-padding-x':'25px',
+        '--subtitle-width':    '82vw',
+        '--brand-bottom':      '376px',
+      },
+      cfg: { _posY: 100 },
+    },
+  },
+};
+
+// Detection helpers. Viewport + DPR classify most iPhones; UA regex is a
+// secondary guard because the iPad-desktop-mode UA reports `Macintosh`.
+function _isIPhoneFamily() {
+  const ua = navigator.userAgent || '';
+  if (!/\b(iPhone|iPod)\b/i.test(ua)) return false;
+  return true;
+}
+function _isIPhone17ProClass() {
+  // 402 × 874 @ 3x — iPhone 16 Pro + 17 Pro share this class. The author's
+  // tuning was done on a 17 Pro but the profile applies cleanly to 16 Pro too.
+  return _isIPhoneFamily()
+      && screen.width === 402 && screen.height === 874
+      && Math.round(window.devicePixelRatio) === 3;
+}
+function _isIPhone17ProMaxClass() {
+  // 440 × 956 @ 3x  (iPhone 17 Pro Max) — NOT auto-targeted without opt-in
+  // since the profile was tuned on Pro, not Pro Max.
+  return _isIPhoneFamily()
+      && screen.width === 440 && screen.height === 956
+      && Math.round(window.devicePixelRatio) === 3;
+}
+function _devProfileOverride() {
+  try {
+    const p = new URLSearchParams(location.search).get('devprofile');
+    return p ? p.toLowerCase() : null;
+  } catch (_) { return null; }
+}
+
+// Apply a sub-block (css vars + CFG patch) to live state. CSS vars go on
+// <html> so they override any same-named declarations in :root. CFG patch
+// triggers a terrain buffer rebuild if the line count changed.
+function _applyProfileSubBlock(sub) {
+  if (!sub) return;
+  if (sub.css) {
+    for (const k in sub.css) document.documentElement.style.setProperty(k, sub.css[k]);
+  }
+  if (sub.cfg) {
+    Object.assign(CFG, sub.cfg);
+    // Rebuild the terrain ring buffer if depth changed.
+    if (typeof terrain !== 'undefined' && terrain.buffer &&
+        terrain.buffer.length !== CFG.terrainLines * CFG.freqSamples) {
+      terrain.buffer = new Float32Array(CFG.terrainLines * CFG.freqSamples);
+      terrain.beatFlags = new Uint8Array(CFG.terrainLines);
+      terrain.head = 0;
+    }
+  }
+  if (sub.terrainZoom != null && typeof TerrainDebug !== 'undefined') {
+    TerrainDebug.zoom = sub.terrainZoom;
+  }
+}
+
+// Pick + apply the right profile for this device. Re-runs on tuner-collapse
+// toggle so the FULL/MINI sub-blocks swap automatically. Called once at
+// boot from the bottom of this block, then rebound to the tuner toggle.
+let _activeProfile = null;
+function applyActiveDeviceProfile() {
+  const ov = _devProfileOverride();
+  let pick = null;
+  if (ov === 'none') pick = null;
+  else if (ov === 'ip17pro')               pick = { id: 'iPhone17Pro', scale: 1 };
+  else if (ov === 'ip17promax-scale')      pick = { id: 'iPhone17Pro', scale: 440 / 402 };
+  else if (_isIPhone17ProClass())          pick = { id: 'iPhone17Pro', scale: 1 };
+  // Pro Max auto-detect is intentionally DISABLED — profile was tuned on
+  // Pro, proportional-scaling it is untested territory. Opt in via URL.
+
+  _activeProfile = pick;
+  if (!pick) return;
+
+  const prof = DeviceProfiles[pick.id];
+  if (!prof) return;
+
+  // Deep-copy base + apply scale if non-1. Only numeric CSS pixel values
+  // + numeric CFG get scaled; unitless ratios (--card-scale, heightScale,
+  // _width percent, etc.) pass through verbatim.
+  const scaled = pick.scale === 1 ? prof : _scaleProfile(prof, pick.scale);
+
+  _applyProfileSubBlock(scaled.base);
+  // Sub-block follows current tuner state.
+  const collapsed = document.body && document.body.classList.contains('tuner-is-collapsed');
+  _applyProfileSubBlock(collapsed ? scaled.mini : scaled.full);
+
+  console.log('[device-profile] applied:', prof.name,
+              pick.scale !== 1 ? '(scaled ×' + pick.scale.toFixed(3) + ')' : '',
+              collapsed ? 'mini' : 'full');
+}
+
+// Scale only the CSS values that end in `px` and the numeric CFG position
+// values. Leaves `%`, `vw`, `vh`, unitless ratios, and terrainLines alone —
+// those don't benefit from proportional scaling.
+function _scaleProfile(prof, s) {
+  const scaleObj = (obj) => {
+    if (!obj) return obj;
+    const out = {};
+    if (obj.css) {
+      out.css = {};
+      for (const k in obj.css) {
+        const v = obj.css[k];
+        const m = /^(-?\d+(?:\.\d+)?)px$/.exec(v);
+        if (m) out.css[k] = (parseFloat(m[1]) * s).toFixed(1).replace(/\.0$/, '') + 'px';
+        else   out.css[k] = v;
+      }
+    }
+    if (obj.cfg) {
+      out.cfg = {};
+      for (const k in obj.cfg) {
+        // Scale only _posX/_posY offsets and iso offsets; leave widths/ratios
+        // (they're already viewport-percent or unitless).
+        const scaleKeys = new Set(['isoOffsetX','isoOffsetY']);
+        out.cfg[k] = scaleKeys.has(k) ? obj.cfg[k] * s : obj.cfg[k];
+      }
+    }
+    if ('terrainZoom' in obj) out.terrainZoom = obj.terrainZoom;
+    return out;
+  };
+  return { name: prof.name, base: scaleObj(prof.base), full: scaleObj(prof.full), mini: scaleObj(prof.mini) };
+}
+
+// Re-apply the profile sub-block when the tuner collapses/expands so
+// FULL ↔ MINI value deltas swap without a page reload.
+(function bindProfileToTunerState() {
+  if (!document.body) return;
+  let lastCollapsed = document.body.classList.contains('tuner-is-collapsed');
+  const obs = new MutationObserver(() => {
+    if (!_activeProfile) return;
+    const now = document.body.classList.contains('tuner-is-collapsed');
+    if (now !== lastCollapsed) {
+      lastCollapsed = now;
+      applyActiveDeviceProfile();
+    }
+  });
+  obs.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+})();
+
+// Apply the profile now (after applyDevicePreset has run — this overrides it).
+applyActiveDeviceProfile();
+
+// ══════════════════════════════════════════════════════════════════
 // PERF TIERS — terrain/visuals scale down on low-end devices.
 // Tiers: default → low → lowest. URL override: ?perf=low|lowest|high.
 //   • Boot heuristic (CPU cores + RAM + UA) picks an initial tier.
