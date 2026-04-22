@@ -967,11 +967,41 @@
     padding-bottom: 10px;
     border-bottom: 1px solid var(--accent-dim);
   }
+  .playback-info-title .pw-sub {
+    font-size: 11px; letter-spacing: 1.5px; color: var(--muted);
+    text-transform: none; font-weight: normal; display: inline-block; margin-left: 6px;
+  }
   .playback-info-body {
     font-size: 13px; line-height: 1.55; color: var(--fg);
   }
-  .playback-info-body p { margin-bottom: 10px; }
+  .playback-info-body p { margin-bottom: 12px; }
   .playback-info-body p:last-child { margin-bottom: 0; }
+  .playback-info-body strong {
+    color: var(--accent); font-weight: bold; letter-spacing: 0.5px;
+  }
+  /* Faint watermark — bottom-right of the modal box. Not part of text flow:
+     absolute-positioned, low opacity, tiny monospace. Per-language text set
+     by applyLang(). Kept out of the reading path so it reads as a sticker,
+     not a sentence. */
+  .playback-info-watermark {
+    position: absolute;
+    right: 14px;
+    bottom: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 1.2px;
+    color: var(--fg);
+    opacity: 0.14;
+    text-transform: uppercase;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    max-width: calc(100% - 28px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  /* Japanese watermark: don't uppercase kana/kanji (noop but defensive) */
+  html[lang="ja"] .playback-info-watermark { text-transform: none; letter-spacing: 0.5px; }
   .playback-info-body code {
     font-family: 'Courier New', monospace; font-size: 12px;
     background: rgba(255,255,255,0.06); padding: 1px 4px;
@@ -1883,14 +1913,24 @@
 <!-- playback info modal — opened by the [i] button -->
 <div class="playback-info-overlay" id="playbackInfoOverlay" aria-hidden="true">
   <div class="playback-info-box" role="dialog" aria-modal="true" aria-labelledby="playbackInfoTitle">
-    <div class="playback-info-title" id="playbackInfoTitle">Pitch wobble on mobile (most common on iPhone Air)</div>
+    <div class="playback-info-title" id="playbackInfoTitle">PITCH WOBBLE ON MOBILE <span class="pw-sub">(Most common on iPhone Air)</span></div>
     <div class="playback-info-body">
-      <p>You may occasionally hear the audio briefly speed up (pitch shift) for about a second, then settle back to normal. It's not an encoding issue &mdash; our audio files are completely healthy, and the same files play cleanly through FL Studio, desktop browsers, and most other phones.</p>
-      <p>We believe the cause is the device's audio stack trying to "catch up" with the dynamic BPM variations typical of EDM tracks. It briefly speeds playback as if it needs to compensate, then realizes there's nothing to compensate for and returns to the correct rate. iPhone Air is the most prone, but it can happen on other mobile devices too &mdash; especially when switching tasks, backgrounding the app, or moving between apps while the player is active.</p>
-      <p>We've ruled out our own code: playback rate is pinned to 1.0, the fetch is buffer-complete before playback, no encoding anomalies in the file. The browser's <code>currentTime</code> tracks accurately &mdash; no seconds are lost &mdash; which is why lock-screen scrubbing is unaffected.</p>
-      <p>For now this sits outside our reach. If it bothers you, desktop or FL Studio playback will always be pristine.</p>
+      <p><strong>The Situation:</strong><br>
+      You might notice the audio briefly speed up or "pitch shift" for a second before settling back into the groove. Trust me, I hear it too, and as a perfectionist, it bugs the heck out of me. After deep-diving into the code, I've confirmed the source files are 100% healthy &mdash; they play perfectly in FL Studio and on desktop browsers.</p>
+
+      <p><strong>The "Science" behind the struggle:</strong><br>
+      It comes down to the mobile device's audio stack. When the browser tries to manage dynamic BPM variations or handles background tasks (like switching apps), the system tries to "catch up" to the buffer. It's like the device is tripping on its own feet for a split second before finding its rhythm again.</p>
+
+      <p><strong>The Game Plan:</strong><br>
+      I've pinned <code>playbackRate</code> to <code>1.0</code>, ensured the fetch is buffer-complete before playback starts, and verified no encoding anomalies in the file. The browser's <code>currentTime</code> still tracks accurately the whole way through &mdash; no seconds are lost &mdash; which is why lock-screen scrubbing and the tuning bar stay in perfect sync even when you hear the wobble. The glitch is purely in the output render, not the timeline. But this specific wobble is a limitation of mobile browser architecture that's currently outside my reach as a solo dev.</p>
+
+      <p><strong>Pro Tip for Pristine Gains:</strong><br>
+      If you want that 1:1 studio-quality experience without the mobile jitters, <strong>Desktop</strong> is your best bet. Or better yet, if you're a producer/DJ, pull out a real DAW or <strong>a deck</strong> and start <strong>cooking</strong>.</p>
+
+      <p>If you create a blend or a transition that goes hard, send it my way! I'm more of a computer guy than a producer and always stoked to see people cooking up with sick beats.</p>
     </div>
     <button class="playback-info-close" id="playbackInfoClose" type="button">[ CLOSE ]</button>
+    <div class="playback-info-watermark" id="playbackInfoWatermark" data-i18n="pw-watermark" aria-hidden="true">WAVE-ISOLATE RADIO RECEIVER v1.0</div>
   </div>
 </div>
 
@@ -2172,6 +2212,7 @@ const I18N = {
     'm-access': 'ACCESS',
     'm-origin': 'ORIGIN',
     'constructed-by': 'Constructed by',
+    'pw-watermark': 'WAVE-ISOLATE RADIO RECEIVER v1.0',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'KEY',
@@ -2231,6 +2272,7 @@ const I18N = {
     'm-access': 'ZUGANG',
     'm-origin': 'URSPRUNG',
     'constructed-by': 'Konstruiert von',
+    'pw-watermark': 'WAVE\u30FBISOLATE-FUNKEMPF\u00C4NGER v1.0',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'TON',
@@ -2290,6 +2332,7 @@ const I18N = {
     'm-access': 'ACCESO',
     'm-origin': 'ORIGEN',
     'constructed-by': 'Construido por',
+    'pw-watermark': 'WAVE\u30FBISOLATE | RECEPTOR RADIO v1.0',
     'signal-label': 'SE\u00D1AL',
     'bpm': 'BPM',
     'key': 'TONO',
@@ -2343,6 +2386,7 @@ const I18N = {
     'm-access': 'ACC\u00C8S',
     'm-origin': 'ORIGINE',
     'constructed-by': 'Construit par',
+    'pw-watermark': 'WAVE\u30FBISOLATE | R\u00C9CEPTEUR RADIO v1.0',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'TON',
@@ -2396,6 +2440,7 @@ const I18N = {
     'm-access': '接続',
     'm-origin': '原曲',
     'constructed-by': '構築',
+    'pw-watermark': '波\u30FBアイソレート ラジオ受信機 v1.0',
     'signal-label': '信号',
     'bpm': 'BPM',
     'key': '調',
