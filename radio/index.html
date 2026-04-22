@@ -790,6 +790,47 @@
   .tuner .tbtn.scan { min-width: 92px; }
   .tuner .tbtn.scan.active { background: var(--accent); color: var(--bg); }
 
+  /* Play/Pause: fixed min-width so the label swap (PLAY↔PAUSE) doesn't jiggle
+     the button. Big enough for the longest translated label (e.g. ABSPIELEN). */
+  .tuner .tbtn.play { min-width: 96px; text-align: center; }
+
+  /* Inline icon shim — inherits button's current-color so the play/pause
+     glyph recolors with hover state. SCAN icon is an <img> (keeps its
+     original black fill so it sits visibly on the accent button bg). */
+  .tuner .tbtn-icon {
+    display: none;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  .tuner .tbtn-icon--play {
+    font-size: 13px; margin-right: 0; color: currentColor;
+    transform: translateY(-1px);
+  }
+  /* Play ▶ vs Pause ⏸ — swapped by the .is-playing class on the button. */
+  .tuner .tbtn.play:not(.is-playing) .tbtn-icon--play::before { content: '\25B6'; }
+  .tuner .tbtn.play.is-playing .tbtn-icon--play::before       { content: '\23F8'; }
+  .tuner .tbtn-icon--scan {
+    width: 18px; height: 18px;
+  }
+  .tuner .tbtn-label { display: inline; }
+
+  /* Desktop landscape (wide): SHOW icon alongside label — prefix-style.
+     The play/pause fixed min-width already accommodates the extra glyph. */
+  @media (min-width: 1000px) and (orientation: landscape) {
+    .tuner .tbtn.scan .tbtn-icon--scan,
+    .tuner .tbtn.play .tbtn-icon--play {
+      display: inline-block;
+    }
+    .tuner .tbtn-icon--play { margin-right: 6px; }
+    .tuner .tbtn-icon--scan { margin-right: 6px; }
+    /* SCAN keeps its normal (transparent) bg in desktop landscape — icon is
+       tinted to the button's currentColor via a filter trick for uniformity. */
+    .tuner .tbtn.scan .tbtn-icon--scan {
+      filter: invert(1) brightness(1.1);  /* black SVG → white-ish; reads as fg */
+    }
+    .tuner .tbtn.scan:hover .tbtn-icon--scan { filter: invert(52%) sepia(85%) saturate(1400%) hue-rotate(360deg); }
+  }
+
   /* center: tuning strip (progress) */
   .tuner .tuning-strip {
     display: grid; grid-template-rows: auto 1fr auto; gap: 4px;
@@ -797,16 +838,24 @@
     min-width: 0;
   }
   .tuner .tuning-strip .strip-top {
-    display: flex; justify-content: space-between;
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 10px;
   }
   .tuner .tuning-strip .strip-top .track-name-cycler {
     color: var(--accent); letter-spacing: 1.5px;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     text-transform: none;   /* preserve "In The Pit" case */
     transition: opacity 0.2s ease;
-    max-width: 60%;
+    /* Take every pixel the time readout isn't using. `min-width: 0` lets
+       flex actually shrink below content size so ellipsis kicks in; without
+       it, long titles blow the row out. */
+    flex: 1 1 auto;
+    min-width: 0;
   }
-  .tuner .tuning-strip .strip-top .time { color: var(--muted); font-family: 'Courier New', monospace; }
+  .tuner .tuning-strip .strip-top .time {
+    color: var(--muted); font-family: 'Courier New', monospace;
+    flex: 0 0 auto; white-space: nowrap;
+  }
 
   .tuner .tuning-bar {
     position: relative; cursor: pointer; height: 26px;
@@ -1943,6 +1992,37 @@
   @media (max-width: 520px) {
     .tuner .tbtn { font-size: 10px; padding: 8px 14px; min-width: 62px; }
     .tuner .freq-num { font-size: 24px; }
+
+    /* ── Mobile COLLAPSED: SCAN + PLAY become icon-only ───────────
+       Hides labels, shrinks buttons to square-ish tiles, and fills the
+       SCAN button with the accent color so the black SVG glyph reads.
+       Gives the strip-top cycler + tuning-bar more horizontal runway. */
+    body.tuner-is-collapsed .tuner .tbtn.scan .tbtn-label,
+    body.tuner-is-collapsed .tuner .tbtn.play .tbtn-label {
+      display: none;
+    }
+    body.tuner-is-collapsed .tuner .tbtn.scan .tbtn-icon--scan,
+    body.tuner-is-collapsed .tuner .tbtn.play .tbtn-icon--play {
+      display: inline-block;
+    }
+    body.tuner-is-collapsed .tuner .tbtn.scan,
+    body.tuner-is-collapsed .tuner .tbtn.play {
+      min-width: 44px; padding: 8px 10px;
+    }
+    body.tuner-is-collapsed .tuner .tbtn.scan {
+      background: var(--accent);        /* orange tile so the black icon reads */
+      border-color: var(--accent);
+    }
+    body.tuner-is-collapsed .tuner .tbtn.scan .tbtn-icon--scan {
+      width: 20px; height: 20px;
+      /* keep the SVG's native black fill against the orange button bg */
+    }
+    body.tuner-is-collapsed .tuner .tbtn.scan.active {
+      background: var(--accent-dim);    /* SCAN-loading visual cue */
+    }
+    body.tuner-is-collapsed .tuner .tbtn.play .tbtn-icon--play {
+      font-size: 16px;
+    }
     .card-body { font-size: 10px; padding: 8px 10px; max-width: 68vw; }
     .card-body .v { max-width: 50vw; }
     .card-collapse { width: 26px; padding: 10px 3px; font-size: 9px; }
@@ -1998,6 +2078,12 @@
     <div class="menu-row">
       <button data-pulse="front" class="mrbtn active" data-i18n="pulse-front">FRONT</button>
       <button data-pulse="end"   class="mrbtn"        data-i18n="pulse-end">END</button>
+    </div>
+
+    <div class="menu-sublabel" data-i18n="reflection">Reflection</div>
+    <div class="menu-row">
+      <button data-reflection="off" class="mrbtn active" data-i18n="refl-off">OFF</button>
+      <button data-reflection="on"  class="mrbtn"        data-i18n="refl-on">ON</button>
     </div>
 
     <!-- footer: subtle TWDU mark + copyright (sys font so © renders cleanly) -->
@@ -2303,8 +2389,14 @@
   <div class="transport">
     <!-- invisible spacer tile so SCAN/PLAY line up with NORMAL/HI-FI (which have the RECALIBRATE SIGNAL label above) -->
     <div class="t-spacer" aria-hidden="true">&nbsp;</div>
-    <button class="tbtn scan" id="btnScan" data-i18n="scan">SCAN</button>
-    <button class="tbtn" id="btnPlay" data-i18n="play">PLAY</button>
+    <button class="tbtn scan" id="btnScan" aria-label="Scan">
+      <img class="tbtn-icon tbtn-icon--scan" src="./elements/scan-icon.svg" alt="" aria-hidden="true" draggable="false">
+      <span class="tbtn-label" data-i18n="scan">SCAN</span>
+    </button>
+    <button class="tbtn play" id="btnPlay" aria-label="Play">
+      <span class="tbtn-icon tbtn-icon--play" aria-hidden="true"></span>
+      <span class="tbtn-label" data-i18n="play">PLAY</span>
+    </button>
   </div>
 
   <!-- right: recalibrate signal (desktop: matches SCAN/PLAY; mobile: slim full-width with label) -->
@@ -2543,6 +2635,11 @@ const I18N = {
     'pulse': 'Pulse',
     'pulse-front': 'FRONT',
     'pulse-end': 'END',
+    'reflection': 'Reflection',
+    'refl-off': 'OFF',
+    'refl-on': 'ON',
+    'igbrowser-msg': 'For best sound + visuals, open in Safari',
+    'igbrowser-msg-android': 'For best sound + visuals, open in Chrome',
     'press-scan': '(press SCAN)',
     'unit-kbps': 'Kbps',
     'unit-signal': 'signal',
@@ -2606,6 +2703,11 @@ const I18N = {
     'pulse': 'Puls',
     'pulse-front': 'VORN',
     'pulse-end': 'ENDE',
+    'reflection': 'Spiegelung',
+    'refl-off': 'AUS',
+    'refl-on': 'AN',
+    'igbrowser-msg': 'F\u00FCr bestes Erlebnis in Safari \u00F6ffnen',
+    'igbrowser-msg-android': 'F\u00FCr bestes Erlebnis in Chrome \u00F6ffnen',
     'press-scan': '(SUCHE dr\u00FCcken)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'Signal',
@@ -2669,6 +2771,11 @@ const I18N = {
     'pulse': 'Pulso',
     'pulse-front': 'FRENTE',
     'pulse-end': 'FONDO',
+    'reflection': 'Reflejo',
+    'refl-off': 'APAG.',
+    'refl-on': 'ENC.',
+    'igbrowser-msg': 'Para mejor experiencia, abre en Safari',
+    'igbrowser-msg-android': 'Para mejor experiencia, abre en Chrome',
     'press-scan': '(oprime BUSCAR)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'se\u00F1al',
@@ -2726,6 +2833,11 @@ const I18N = {
     'pulse': 'Impulsion',
     'pulse-front': 'AVANT',
     'pulse-end': 'FOND',
+    'reflection': 'Reflet',
+    'refl-off': 'OFF',
+    'refl-on': 'ON',
+    'igbrowser-msg': 'Pour une meilleure exp\u00E9rience, ouvrir dans Safari',
+    'igbrowser-msg-android': 'Pour une meilleure exp\u00E9rience, ouvrir dans Chrome',
     'press-scan': '(appuie sur BALAYER)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'signal',
@@ -2783,6 +2895,11 @@ const I18N = {
     'pulse': 'パルス',
     'pulse-front': '手前',
     'pulse-end': '奥',
+    'reflection': '反射',
+    'refl-off': 'オフ',
+    'refl-on': 'オン',
+    'igbrowser-msg': '最高の体験はSafariでお楽しみください',
+    'igbrowser-msg-android': '最高の体験はChromeでお楽しみください',
     'press-scan': '(\u8D70\u67FB\u3092\u62BC\u3059)',
     'unit-kbps': 'Kb/\u79D2',
     'unit-signal': '\u4FE1\u53F7',
@@ -5410,7 +5527,15 @@ function fmt(sec) {
 
 function updatePlayBtn() {
   const btn = btnPlay;
-  btn.textContent = engine.playing ? t('pause') : t('play');
+  const playing = engine.playing;
+  // Toggle class so CSS ::before swaps the ▶/⏸ glyph. State is purely
+  // a class + label swap — width is locked via .tbtn.play { min-width } so
+  // PLAY ↔ PAUSE (or in icon-only mode the ▶↔⏸ glyph) doesn't jiggle.
+  btn.classList.toggle('is-playing', playing);
+  btn.setAttribute('aria-label', playing ? t('pause') : t('play'));
+  // Update the label span (icon span keeps itself current via CSS).
+  const label = btn.querySelector('.tbtn-label');
+  if (label) label.textContent = playing ? t('pause') : t('play');
 }
 
 // ── streaming-rate display (replaces FM frequency) ──
@@ -7959,8 +8084,10 @@ function updateDbReadout(freq) {
     }
     if (btnReflect) {
       btnReflect.addEventListener('click', () => {
-        TerrainDebug.reflection = !TerrainDebug.reflection;
-        setBtnOn(btnReflect, TerrainDebug.reflection, 'ON', 'OFF');
+        // Route through Settings so the Settings menu Waves row, TerrainDebug
+        // flag, and debug button all stay in lockstep + persist.
+        Settings.reflection = (Settings.reflection === 'on') ? 'off' : 'on';
+        Settings.applyReflection();
       });
     }
   })();
@@ -9316,6 +9443,11 @@ const Settings = {
   // buffer so all slices are near the newest). 'end' → smear laid FORWARD
   // (older slices), pulse surfaces at the deepest part of the terrain.
   pulse: localStorage.getItem('td-radio-pulse') || 'front',
+  // Reflection — mirrors the terrain below its horizon as a reflective pool.
+  // Default OFF (subtle effect, small perf cost). Persisted per-visitor.
+  // Settings writes through to TerrainDebug.reflection so the debug Tweak
+  // Lab button stays in sync with the user-facing toggle.
+  reflection: localStorage.getItem('td-radio-reflection') || 'off',
 
   applyTransparency() {
     document.documentElement.classList.toggle('no-transparency', this.transparency === 'off');
@@ -9394,6 +9526,24 @@ const Settings = {
       b.classList.toggle('active', b.dataset.pulse === this.pulse);
     });
     localStorage.setItem('td-radio-pulse', this.pulse);
+  },
+
+  applyReflection() {
+    const on = this.reflection === 'on';
+    // TerrainDebug is the in-flight flag the renderer reads each frame;
+    // mirror the Setting onto it so both the Settings menu and the debug
+    // Tweak Lab button resolve to one source of truth.
+    if (typeof TerrainDebug !== 'undefined') TerrainDebug.reflection = on;
+    document.querySelectorAll('.bar-menu [data-reflection]').forEach(b => {
+      b.classList.toggle('active', b.dataset.reflection === this.reflection);
+    });
+    // Keep the debug Tweak Lab button's ON/OFF label in sync if present.
+    const dbg = document.getElementById('dbgTerrainReflect');
+    if (dbg) {
+      dbg.textContent = on ? 'ON' : 'OFF';
+      dbg.classList.toggle('dbg-btn--on', on);
+    }
+    localStorage.setItem('td-radio-reflection', this.reflection);
   }
 };
 
@@ -9425,18 +9575,71 @@ document.querySelectorAll('.bar-menu [data-pulse]').forEach(b => {
     Settings.applyPulse();
   });
 });
+document.querySelectorAll('.bar-menu [data-reflection]').forEach(b => {
+  b.addEventListener('click', e => {
+    e.stopPropagation();
+    Settings.reflection = b.dataset.reflection;
+    Settings.applyReflection();
+  });
+});
 
 // apply saved settings on boot
 Settings.applyTransparency();
 Settings.applyWaves();
 Settings.applyTheme();
 Settings.applyPulse();
+Settings.applyReflection();
 
 // Device-profile re-application — must run AFTER Settings.applyWaves because
 // applyWaves resets terrainLines based on perf + mobile-base, overriding any
 // depth set during the first profile pass. Re-applying here wins the final
 // word for the terrain buffer + CFG values on profile-targeted devices.
 if (typeof applyActiveDeviceProfile === 'function') applyActiveDeviceProfile();
+
+// ══════════════════════════════════════════════════════════════════
+// IN-APP BROWSER WELCOME
+// ──────────────────────────────────────────────────────────────────
+// Instagram / Facebook / TikTok / etc. embed pages in a WebView that's
+// notably restricted: audio-session juggling is flakier, no background
+// playback, sometimes weird viewport behaviour, mediocre WebAudio perf.
+// Detect + nudge the visitor toward a real browser. Shown once per
+// session (localStorage flag) so the toast doesn't become annoying.
+// ══════════════════════════════════════════════════════════════════
+(function showInAppBrowserWelcome() {
+  try {
+    const ua = navigator.userAgent || '';
+    // Detection patterns — first match wins for labelling purposes.
+    //   Instagram    → "Instagram"
+    //   Facebook     → "FBAN" / "FBAV"
+    //   TikTok       → "musical_ly" / "BytedanceWebview" / "trill"
+    //   LinkedIn     → "LinkedInApp"
+    //   Twitter/X    → "Twitter"  (older) — less reliable
+    //   Snap         → "Snapchat"
+    //   WeChat       → "MicroMessenger"
+    //   Line         → "Line/"
+    const isInApp =
+      /\bInstagram\b/i.test(ua) ||
+      /\bFBAN\b|\bFBAV\b|\bFB_IAB\b/i.test(ua) ||
+      /musical_ly|BytedanceWebview|\btrill\b/i.test(ua) ||
+      /\bLinkedInApp\b/i.test(ua) ||
+      /\bSnapchat\b/i.test(ua) ||
+      /\bMicroMessenger\b/i.test(ua) ||
+      /\bLine\//i.test(ua);
+    if (!isInApp) return;
+    // Respect prior session dismissal.
+    if (sessionStorage.getItem('td-radio-igtoast') === '1') return;
+    sessionStorage.setItem('td-radio-igtoast', '1');
+    // Platform-appropriate browser suggestion. Android → Chrome; everything
+    // else (iOS primarily) → Safari. Both messages live in the I18N dict so
+    // the toast stays readable in whatever language the visitor is on.
+    const isAndroid = /\bAndroid\b/i.test(ua);
+    const key = isAndroid ? 'igbrowser-msg-android' : 'igbrowser-msg';
+    // Delay slightly so boot toasts (offline-mode, etc.) don't collide.
+    setTimeout(() => {
+      if (typeof toast === 'function' && typeof t === 'function') toast(t(key), 6000);
+    }, 1800);
+  } catch (_) { /* never break boot over a welcome nudge */ }
+})();
 
 </script>
 </body>
