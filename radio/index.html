@@ -5775,11 +5775,16 @@ function applyActiveDeviceProfile() {
   _applyProfileSubBlock(collapsed ? scaled.mini : scaled.full);
 
   // Apply recommendDefaults — first-boot-only defaults, applied per
-  // Settings key IF no prior localStorage preference exists. User's
-  // subsequent explicit choice wins on later boots. Runs once per
-  // applyActiveDeviceProfile call; idempotent since it short-circuits
-  // on any prior value.
-  if (prof.recommendDefaults && typeof Settings !== 'undefined') {
+  // Settings key IF no prior localStorage preference exists. Runs ONLY
+  // on the LATE call (after Settings is initialized at the bottom of
+  // the script); the EARLY call fires while Settings is still in its
+  // Temporal Dead Zone, which makes even `typeof Settings` THROW
+  // (classic let/const TDZ gotcha — not the same as undeclared-var
+  // typeof behaviour). We probe accessibility via try/catch first,
+  // and the whole block skips cleanly when Settings isn't reachable.
+  let _settingsReady = false;
+  try { _settingsReady = !!Settings; } catch (_) { /* TDZ — not yet declared */ }
+  if (prof.recommendDefaults && _settingsReady) {
     for (const [k, v] of Object.entries(prof.recommendDefaults)) {
       const lsKey = 'td-radio-' + k;
       if (localStorage.getItem(lsKey) == null) {
