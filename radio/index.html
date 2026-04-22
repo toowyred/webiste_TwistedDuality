@@ -2338,6 +2338,282 @@
       margin-left: auto;
     }
   }
+
+  /* ── v2 CHANNELS ROW ────────────────────────────────────────────
+     Horizontal strip of circular channel buttons pinned just below
+     the top-bar (floating — not part of the bar). Scrolls horizontally
+     on overflow; never wraps to a second row. Each button is the
+     "badge" for now: its icon communicates both channel identity AND
+     state. CSS provides the per-state ring/animation overlay; JS will
+     later probe for optional per-state icon variants (`<id>-<state>.png`)
+     and swap the src when present — fallback to the base icon when not.
+     All visual knobs are CSS vars so the Debug v2 panel can live-tune.
+  ─────────────────────────────────────────────────────────────── */
+  :root {
+    --ch-btn-size:    44px;
+    --ch-border-w:     2px;
+    --ch-row-gap:     50px;
+    --ch-row-padt:    10px;
+    --ch-row-padx:    14px;
+    --ch-row-padb:    16px;
+    --ch-sticker-fs:   7px;
+  }
+  .channel-row {
+    position: fixed;
+    top: var(--top-bar-h, 38px);
+    left: 0; right: 0;
+    z-index: 195;                     /* below top-bar(200) + bar-menu(250) */
+    display: flex;
+    align-items: flex-start;
+    /* Gap sized so the widest long-form sticker ("IN-CONSTRUCTION", ~90px)
+       doesn't overlap its neighbor button's sticker zone. Narrower gap
+       via breakpoint below once short-form stickers kick in. */
+    gap: var(--ch-row-gap);
+    padding: var(--ch-row-padt) var(--ch-row-padx) var(--ch-row-padb);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    /* Fade mask on the right edge hints scrollability when overflowed. */
+    -webkit-mask-image: linear-gradient(to right, #000 85%, transparent 100%);
+    mask-image:         linear-gradient(to right, #000 85%, transparent 100%);
+    pointer-events: auto;
+  }
+  .channel-row::-webkit-scrollbar { display: none; }
+
+  .channel-btn {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    position: relative;
+    width: var(--ch-btn-size); height: var(--ch-btn-size);
+    border-radius: 50%;
+    background: rgba(10,10,10,0.55);
+    border: var(--ch-border-w) solid var(--accent);
+    padding: 0;
+    cursor: pointer;
+    overflow: visible;
+    transition: transform 0.15s ease, border-color 0.2s, opacity 0.2s;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  html.no-transparency .channel-btn,
+  html.perf-low        .channel-btn { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .channel-btn:hover:not(.is-disabled):not(.is-hollow) { transform: scale(1.06); }
+  .channel-btn:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent); }
+
+  .channel-btn .ch-icon {
+    position: absolute; inset: 3px;
+    border-radius: 50%;
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+    transition: filter 0.25s, opacity 0.25s;
+  }
+
+  /* ── Per-state visuals (CSS-driven; icon file may be state-agnostic) */
+  .channel-btn.is-inactive                 { border-color: var(--dim); }
+  .channel-btn.is-inactive  .ch-icon       { filter: brightness(0.55) saturate(0.25); }
+
+  .channel-btn.is-scanning                 { border-color: var(--accent); }
+  .channel-btn.is-scanning::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 2px dashed var(--accent);
+    animation: ch-spin 2.4s linear infinite;
+    pointer-events: none;
+  }
+
+  .channel-btn.is-syncing                  { border-color: var(--accent); }
+  .channel-btn.is-syncing::after {
+    content: ''; position: absolute; inset: -4px; border-radius: 50%;
+    border: 2px solid var(--accent);
+    animation: ch-pulse 1.6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .channel-btn.is-active                   { border-width: calc(var(--ch-border-w) + 1px); border-color: var(--accent); }
+
+  @keyframes ch-spin  { to   { transform: rotate(360deg); } }
+  @keyframes ch-pulse { 0%,100% { opacity: 0.9;  transform: scale(1); }
+                        50%     { opacity: 0.35; transform: scale(1.14); } }
+
+  /* ── Disabled (COMING SOON) — real channel, not yet live */
+  .channel-btn.is-disabled {
+    cursor: not-allowed;
+    border-color: var(--dim);
+    opacity: 0.68;
+  }
+  .channel-btn.is-disabled .ch-icon { filter: grayscale(1) brightness(0.55); }
+
+  /* ── Hollow placeholder — no icon, NULL label inside */
+  .channel-btn.is-hollow {
+    border-style: dashed;
+    border-color: var(--dim);
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .channel-btn.is-hollow .ch-icon { display: none; }
+  .channel-btn.is-hollow .ch-null {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; letter-spacing: 1.5px;
+    color: var(--dim);
+  }
+
+  /* ── Sticker below the button (COMING SOON / IN-CONSTRUCTION).
+     Hidden by default; revealed on hover, keyboard focus, or tap
+     (tap adds .is-revealed via JS with an auto-expire). */
+  .channel-btn .ch-sticker {
+    position: absolute;
+    left: 50%; top: calc(100% + 3px);
+    transform: translateX(-50%);
+    font-size: var(--ch-sticker-fs, 7px);
+    letter-spacing: 1px;
+    line-height: 1;
+    padding: 2px 4px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(10,10,10,0.85);
+    border: 1px solid var(--accent);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+  .channel-btn:hover .ch-sticker,
+  .channel-btn:focus-visible .ch-sticker,
+  .channel-btn.is-revealed .ch-sticker { opacity: 1; }
+  .channel-btn.is-disabled .ch-sticker,
+  .channel-btn.is-hollow   .ch-sticker { color: var(--dim); border-color: var(--dim); }
+  /* Dual-label: show long form by default, short form on narrow widths
+     OR short viewport heights (landscape-mobile where width > 520 but the
+     compressed row can't afford 90px stickers either). */
+  .channel-btn .ch-sticker .st-short { display: none; }
+  @media (max-width: 520px), (max-height: 500px) {
+    .channel-btn .ch-sticker .st-full  { display: none; }
+    .channel-btn .ch-sticker .st-short { display: inline; }
+  }
+
+  /* ── Landscape-short: tighten sizing so the row doesn't eat vertical space. */
+  @media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+    :root {
+      --ch-btn-size: 32px;
+      --ch-border-w: 1.5px;
+      --ch-row-gap:  8px;
+      --ch-row-padt: 4px;
+      --ch-row-padx: 10px;
+      --ch-row-padb: 10px;
+      --ch-sticker-fs: 6px;
+    }
+    .channel-btn .ch-sticker { padding: 1px 3px; top: calc(100% + 2px); }
+  }
+  /* ── Narrow portrait: short-form stickers already kicked in at 520px,
+     so row gap can tighten back up and buttons shrink a notch. */
+  @media (max-width: 520px) {
+    :root {
+      --ch-btn-size: 38px;
+      --ch-row-gap: 18px;
+      --ch-row-padt: 8px;
+      --ch-row-padx: 10px;
+      --ch-row-padb: 14px;
+    }
+  }
+
+  /* ── DEBUG v2 PANEL ─────────────────────────────────────────────
+     Live-tunes the channel-row CSS vars. Anchored under the WSI brand
+     plate (JS positions after measuring). Unlocked only via code
+     `debug2` → body.debugv2-active. Hidden outside that mode.
+  ─────────────────────────────────────────────────────────────── */
+  body:not(.debugv2-active) .debugv2-panel { display: none !important; }
+  .debugv2-panel {
+    position: fixed;
+    /* top + right are written by JS to anchor under the brand plate;
+       these fallbacks just keep it on-screen before first measurement. */
+    top: 100px; right: 24px;
+    width: 240px;
+    z-index: 190;
+    background: rgba(10,10,10,0.88);
+    border: 1px solid var(--accent);
+    color: var(--fg);
+    font-family: 'Courier New', monospace;
+    font-size: 10px; letter-spacing: 1px;
+    padding: 10px 12px;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+  }
+  .debugv2-panel.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .debugv2-panel .dv2-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 0 0 6px; padding-bottom: 6px;
+    border-bottom: 1px solid var(--accent-dim);
+  }
+  .debugv2-panel .dv2-title { color: var(--accent); font-weight: bold; }
+  .debugv2-panel .dv2-close {
+    background: none; border: none; color: var(--muted);
+    font: inherit; font-size: 14px; line-height: 1; cursor: pointer;
+    padding: 0 2px;
+  }
+  .debugv2-panel .dv2-close:hover { color: var(--accent); }
+  .debugv2-panel .dv2-ctx {
+    color: var(--muted); font-size: 9px;
+    margin-bottom: 8px;
+  }
+  .debugv2-panel .dv2-ctx b { color: var(--accent); }
+  .debugv2-panel .dv2-row {
+    display: grid;
+    grid-template-columns: 76px 1fr 44px;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .debugv2-panel .dv2-row label { color: var(--muted); font-size: 9px; }
+  .debugv2-panel .dv2-row input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    background: rgba(255,255,255,0.08); height: 3px; border-radius: 0;
+    outline: none; margin: 0;
+  }
+  .debugv2-panel .dv2-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 10px; height: 14px; background: var(--accent);
+    border: none; cursor: pointer; border-radius: 0;
+  }
+  .debugv2-panel .dv2-row input[type="range"]::-moz-range-thumb {
+    width: 10px; height: 14px; background: var(--accent);
+    border: none; cursor: pointer; border-radius: 0;
+  }
+  .debugv2-panel .dv2-row input[type="number"] {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--accent-dim);
+    color: var(--fg);
+    font: inherit; font-size: 9px;
+    width: 100%; padding: 2px 4px;
+    text-align: right;
+    -moz-appearance: textfield;
+  }
+  .debugv2-panel .dv2-row input[type="number"]::-webkit-outer-spin-button,
+  .debugv2-panel .dv2-row input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none; margin: 0;
+  }
+  .debugv2-panel .dv2-actions {
+    display: flex; gap: 6px; margin-top: 8px;
+    padding-top: 6px; border-top: 1px solid var(--accent-dim);
+  }
+  .debugv2-panel .dv2-actions button {
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    color: var(--muted);
+    border: 1px solid var(--accent-dim);
+    font: inherit; font-size: 9px; letter-spacing: 1.5px;
+    padding: 5px 6px; cursor: pointer;
+    text-transform: uppercase;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .debugv2-panel .dv2-actions button:hover { color: var(--accent); border-color: var(--accent); }
+  .debugv2-panel .dv2-status {
+    color: var(--good); font-size: 9px; margin-top: 4px;
+    min-height: 11px; text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -2418,6 +2694,29 @@
     </div>
   </div>
 </nav>
+
+<!-- v2 CHANNELS — floating row under the top-bar. Horizontally scrollable;
+     never wraps. ch-main is the current "plays everything" channel; ch-mo
+     (Motion Memories) is real but not-yet-live; ch-03/04 are hollow
+     placeholders so the row already telegraphs the future shape. -->
+<div class="channel-row" id="channelRow" role="tablist" aria-label="Channels"></div>
+
+<!-- DEBUG v2 live-tuner — only visible after `debug2` code. Positioned by
+     JS to sit directly under the WSI brand plate. Slider rows read/write
+     CSS vars live so author can dial in numbers per viewport. -->
+<div class="debugv2-panel" id="debugV2Panel" aria-hidden="true" role="dialog" aria-label="Debug v2 — Channels">
+  <div class="dv2-header">
+    <span class="dv2-title">DEBUG v2 · CHANNELS</span>
+    <button class="dv2-close" id="debugV2Close" type="button" aria-label="Close">&times;</button>
+  </div>
+  <div class="dv2-ctx">viewport: <b id="dv2Ctx">—</b></div>
+  <div class="dv2-ctrls" id="dv2Ctrls"></div>
+  <div class="dv2-actions">
+    <button type="button" id="dv2Copy">COPY VALUES</button>
+    <button type="button" id="dv2Reset">RESET</button>
+  </div>
+  <div class="dv2-status" id="dv2Status"></div>
+</div>
 
 <!-- metadata block (middle-left edge, 2-col label/value + vertical collapse button) -->
 <div class="track-card" id="trackCard">
@@ -6379,6 +6678,315 @@ hamBtn.addEventListener('click', e => {
   e.stopPropagation();
   barMenu.classList.toggle('open');
 });
+
+// ── v2 CHANNELS — floating channel-button row beneath the top-bar.
+//    Renders from a static defs table for now (ch-main live, ch-mo
+//    coming-soon, two hollow placeholders). Click handlers are stubs —
+//    the MixPlanner that actually swaps channels lands in a later round.
+//    Icon-variant probe: if `<icon>-<state>.png` exists at load it gets
+//    used when that state activates; otherwise the base icon stays put.
+window.Channels = (function () {
+  const defs = [
+    { id: 'ch-main', label: 'MAIN',
+      icon: 'channels/ch-main.png', state: 'active'   },
+    { id: 'ch-mo',   label: 'MOTION MEMORIES',
+      icon: 'channels/ch-mo.png',   state: 'inactive',
+      disabled: true, sticker: 'COMING SOON', stickerShort: 'SOON' },
+    { id: 'ch-03',   label: 'NULL',
+      icon: null, hollow: true, sticker: 'IN-CONSTRUCTION', stickerShort: 'WIP' },
+    { id: 'ch-04',   label: 'NULL',
+      icon: null, hollow: true, sticker: 'IN-CONSTRUCTION', stickerShort: 'WIP' },
+  ];
+  const STATES = ['inactive','scanning','syncing','active'];
+  const variantCache = new Map(); // `${id}:${state}` -> url | null (probed)
+
+  function probe(url) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload  = () => resolve(url);
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+  }
+  async function iconFor(def, state) {
+    if (!def.icon) return null;
+    const key = `${def.id}:${state}`;
+    if (variantCache.has(key)) return variantCache.get(key) || def.icon;
+    const variant = def.icon.replace(/\.(png|webp|jpg)$/i, `-${state}.$1`);
+    if (variant === def.icon) { variantCache.set(key, null); return def.icon; }
+    const found = await probe(variant);
+    variantCache.set(key, found);
+    return found || def.icon;
+  }
+
+  function render() {
+    const root = document.getElementById('channelRow');
+    if (!root) return;
+    root.innerHTML = '';
+    defs.forEach(def => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'channel-btn';
+      btn.dataset.channelId = def.id;
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-label', def.label);
+      if (def.hollow)   btn.classList.add('is-hollow');
+      if (def.disabled) btn.classList.add('is-disabled');
+      if (!def.hollow && !def.disabled) btn.classList.add(`is-${def.state || 'inactive'}`);
+      // hollow buttons still carry an is-inactive equivalent so state reads are uniform
+      if (def.hollow || def.disabled) btn.setAttribute('aria-disabled', 'true');
+
+      const icon = document.createElement('span');
+      icon.className = 'ch-icon';
+      btn.appendChild(icon);
+
+      if (def.hollow) {
+        const n = document.createElement('span');
+        n.className = 'ch-null';
+        n.textContent = 'NULL';
+        btn.appendChild(n);
+      }
+      if (def.sticker) {
+        const s = document.createElement('span');
+        s.className = 'ch-sticker';
+        // Dual-label: long form on roomy viewports, short form on narrow.
+        // CSS swaps visibility at ≤520px so stickers can't overlap adjacent
+        // buttons when the row tightens.
+        const full  = document.createElement('span'); full.className  = 'st-full';  full.textContent  = def.sticker;
+        const short = document.createElement('span'); short.className = 'st-short'; short.textContent = def.stickerShort || def.sticker;
+        s.appendChild(full); s.appendChild(short);
+        btn.appendChild(s);
+      }
+
+      // Initial icon (base src); state-variant swap happens async.
+      if (def.icon) {
+        icon.style.backgroundImage = `url("${def.icon}")`;
+        iconFor(def, def.state || 'inactive').then(url => {
+          if (url) icon.style.backgroundImage = `url("${url}")`;
+        });
+      }
+
+      btn.addEventListener('click', () => onClick(def.id));
+      root.appendChild(btn);
+    });
+  }
+
+  function onClick(id) {
+    const def = defs.find(d => d.id === id);
+    if (!def) return;
+    // Disabled / hollow → tap reveals the sticker for ~2.4 s (mobile has no hover).
+    // Desktop hover/focus reveals via CSS; the class just mirrors that behavior on tap.
+    if (def.hollow || def.disabled) {
+      const btn = document.querySelector(`.channel-btn[data-channel-id="${id}"]`);
+      if (!btn) return;
+      document.querySelectorAll('.channel-btn.is-revealed').forEach(el => {
+        if (el !== btn) el.classList.remove('is-revealed');
+      });
+      btn.classList.add('is-revealed');
+      clearTimeout(btn._revealT);
+      btn._revealT = setTimeout(() => btn.classList.remove('is-revealed'), 2400);
+      return;
+    }
+    // ch-main is always active; clicking it is a no-op for now.
+    // Future: clicking an inactive channel → setState('scanning') + MixPlanner.request(id).
+    if (def.state === 'active') return;
+  }
+
+  function setState(id, state) {
+    if (!STATES.includes(state)) return;
+    const def = defs.find(d => d.id === id);
+    if (!def) return;
+    def.state = state;
+    const btn = document.querySelector(`.channel-btn[data-channel-id="${id}"]`);
+    if (!btn) return;
+    STATES.forEach(s => btn.classList.remove(`is-${s}`));
+    btn.classList.add(`is-${state}`);
+    // Swap icon to the state-variant if one exists.
+    const icon = btn.querySelector('.ch-icon');
+    if (icon && def.icon) {
+      iconFor(def, state).then(url => {
+        if (url) icon.style.backgroundImage = `url("${url}")`;
+      });
+    }
+  }
+
+  function init() { render(); }
+  return { init, setState, defs };
+})();
+
+// Render once DOM is parsed (script lives at end of body in existing layout,
+// so DOM is already available — call immediately).
+try { window.Channels.init(); } catch (e) { console.warn('[channels] init failed', e); }
+
+// ── DEBUG v2 — live-tuner for channel-row CSS vars.
+//    Activated by code `debug2` → body.debugv2-active → panel opens under brand.
+//    Slider rows read :root's current var (pulling from breakpoint), write back
+//    with setProperty so changes apply instantly regardless of media query.
+//    User dials numbers, hits COPY VALUES, pastes back so we can bake per-bp.
+window.DebugV2 = (function () {
+  const VARS = [
+    { key: '--ch-btn-size',   label: 'BTN SIZE',   min: 20, max: 90, step: 1,   unit: 'px' },
+    { key: '--ch-border-w',   label: 'BORDER',     min: 1,  max: 6,  step: 0.5, unit: 'px' },
+    { key: '--ch-row-gap',    label: 'ROW GAP',    min: 2,  max: 90, step: 1,   unit: 'px' },
+    { key: '--ch-row-padt',   label: 'PAD TOP',    min: 0,  max: 30, step: 1,   unit: 'px' },
+    { key: '--ch-row-padx',   label: 'PAD X',      min: 0,  max: 40, step: 1,   unit: 'px' },
+    { key: '--ch-row-padb',   label: 'PAD BOT',    min: 0,  max: 30, step: 1,   unit: 'px' },
+    { key: '--ch-sticker-fs', label: 'STICK. FS',  min: 5,  max: 14, step: 0.5, unit: 'px' },
+  ];
+
+  function currentViewportBucket() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const landscapeShort = (w <= 900 && h <= 500 && w > h);
+    if (landscapeShort) return 'landscape-short';
+    if (w <= 520)       return 'mobile-narrow';
+    if (h <= 500)       return 'short-height';
+    if (w <= 860)       return 'tablet';
+    return 'desktop';
+  }
+
+  function readVar(key) {
+    // Prefer inline override on :root (what the sliders write), fall back to
+    // computed so we read the active breakpoint's default the first time.
+    const inline = document.documentElement.style.getPropertyValue(key).trim();
+    if (inline) return inline;
+    return getComputedStyle(document.documentElement).getPropertyValue(key).trim();
+  }
+  function parsePx(s) {
+    const m = String(s).match(/-?\d+(?:\.\d+)?/);
+    return m ? parseFloat(m[0]) : 0;
+  }
+
+  function render() {
+    const root = document.getElementById('dv2Ctrls');
+    if (!root) return;
+    root.innerHTML = '';
+    VARS.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'dv2-row';
+
+      const lbl = document.createElement('label'); lbl.textContent = v.label;
+      const sl  = document.createElement('input');
+      sl.type = 'range'; sl.min = v.min; sl.max = v.max; sl.step = v.step;
+      const nm  = document.createElement('input');
+      nm.type = 'number'; nm.min = v.min; nm.max = v.max; nm.step = v.step;
+
+      const cur = parsePx(readVar(v.key));
+      sl.value = cur; nm.value = cur;
+
+      function applyVal(n) {
+        const clamped = Math.max(v.min, Math.min(v.max, Number(n)));
+        const s = clamped + v.unit;
+        document.documentElement.style.setProperty(v.key, s);
+        sl.value = clamped; nm.value = clamped;
+      }
+      sl.addEventListener('input', e => applyVal(e.target.value));
+      nm.addEventListener('input', e => applyVal(e.target.value));
+
+      row.appendChild(lbl); row.appendChild(sl); row.appendChild(nm);
+      root.appendChild(row);
+    });
+    refreshCtx();
+    positionUnderBrand();
+  }
+
+  function refreshCtx() {
+    const ctx = document.getElementById('dv2Ctx');
+    if (ctx) ctx.textContent = currentViewportBucket() + ' (' + window.innerWidth + '×' + window.innerHeight + ')';
+  }
+
+  function refresh() {
+    // Re-seed sliders from whatever the current effective vars are (e.g. when
+    // viewport changes while the panel is open, the media-query defaults shift).
+    document.querySelectorAll('.dv2-row').forEach((row, i) => {
+      const v = VARS[i]; if (!v) return;
+      const cur = parsePx(readVar(v.key));
+      const sl = row.querySelector('input[type="range"]');
+      const nm = row.querySelector('input[type="number"]');
+      // Only reseed if the user hasn't set an inline override for this var —
+      // otherwise we'd stomp their tuning every time the viewport changes.
+      const hasInline = !!document.documentElement.style.getPropertyValue(v.key).trim();
+      if (hasInline) return;
+      if (sl) sl.value = cur;
+      if (nm) nm.value = cur;
+    });
+    refreshCtx();
+    positionUnderBrand();
+  }
+
+  function positionUnderBrand() {
+    const panel = document.getElementById('debugV2Panel');
+    const brand = document.getElementById('brand');
+    if (!panel || !brand) return;
+    const r = brand.getBoundingClientRect();
+    // Anchor just below brand; clamp to viewport so we never spill offscreen.
+    const margin = 8;
+    let top = Math.round(r.bottom + margin);
+    const panelH = panel.offsetHeight || 280;
+    const maxTop = window.innerHeight - panelH - 8;
+    if (top > maxTop) top = Math.max(8, maxTop);
+    // Right-align with brand's right edge so the two read as a stacked pair.
+    const right = Math.max(8, Math.round(window.innerWidth - r.right));
+    panel.style.top = top + 'px';
+    panel.style.right = right + 'px';
+  }
+
+  function copyValues() {
+    const bucket = currentViewportBucket();
+    const lines = ['# debug v2 — ' + bucket + ' (' + window.innerWidth + '×' + window.innerHeight + ')'];
+    VARS.forEach(v => {
+      const val = parsePx(readVar(v.key));
+      lines.push('  ' + v.key + ': ' + val + v.unit + ';');
+    });
+    const out = lines.join('\n');
+    const done = (msg) => {
+      const s = document.getElementById('dv2Status');
+      if (s) { s.textContent = msg; clearTimeout(s._t); s._t = setTimeout(() => s.textContent = '', 1800); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(out).then(() => done('copied ✓')).catch(() => done('copy failed'));
+    } else {
+      // Fallback: textarea selection. Works in older / non-secure contexts.
+      const ta = document.createElement('textarea');
+      ta.value = out; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done('copied ✓'); } catch (_) { done('copy failed'); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  function reset() {
+    VARS.forEach(v => document.documentElement.style.removeProperty(v.key));
+    refresh();
+    const s = document.getElementById('dv2Status');
+    if (s) { s.textContent = 'reset ✓'; clearTimeout(s._t); s._t = setTimeout(() => s.textContent = '', 1400); }
+  }
+
+  function close() {
+    document.body.classList.remove('debugv2-active');
+    const p = document.getElementById('debugV2Panel');
+    if (p) { p.classList.remove('open'); p.setAttribute('aria-hidden', 'true'); }
+  }
+
+  function init() {
+    render();
+    const closeBtn = document.getElementById('debugV2Close');
+    const copyBtn  = document.getElementById('dv2Copy');
+    const resetBtn = document.getElementById('dv2Reset');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    if (copyBtn)  copyBtn.addEventListener('click', copyValues);
+    if (resetBtn) resetBtn.addEventListener('click', reset);
+    window.addEventListener('resize', () => { refresh(); });
+    // Keep the panel glued to the brand if brand text-swaps shift its size.
+    if (typeof ResizeObserver !== 'undefined') {
+      const brand = document.getElementById('brand');
+      if (brand) new ResizeObserver(positionUnderBrand).observe(brand);
+    }
+  }
+
+  return { init, refresh, close, copyValues, reset };
+})();
+
+try { window.DebugV2.init(); } catch (e) { console.warn('[debugv2] init failed', e); }
+
 document.addEventListener('click', e => {
   if (!barMenu.contains(e.target) && !hamBtn.contains(e.target)) barMenu.classList.remove('open');
 });
@@ -9801,6 +10409,13 @@ const CodesRegistry = {
     } else if (target === 'debugMode') {
       const dbg = document.getElementById('debugPanel');
       if (dbg) dbg.classList.add('open');
+      ok = true;
+    } else if (target === 'debugV2Mode') {
+      // v2 CHANNELS live-tuning panel. Anchored under the WSI brand plate.
+      document.body.classList.add('debugv2-active');
+      const p = document.getElementById('debugV2Panel');
+      if (p) { p.classList.add('open'); p.setAttribute('aria-hidden', 'false'); }
+      if (typeof DebugV2 !== 'undefined' && DebugV2.refresh) DebugV2.refresh();
       ok = true;
     } else if (target.startsWith('lang:')) {
       const lang = target.slice(5).trim();
