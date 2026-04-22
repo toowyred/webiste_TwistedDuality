@@ -113,10 +113,18 @@
     display: block; height: 1.5px; background: currentColor; border-radius: 1px;
   }
   .bar-menu {
-    display: none; position: fixed; top: 38px; right: 14px; z-index: 250;
+    display: none; position: fixed;
+    /* Top is written via JS to match the live top-bar bottom edge — creates
+       a clean 90° seam where the two surfaces meet. `38px` is a fallback
+       for the first paint before JS measures. */
+    top: var(--top-bar-h, 38px);
+    right: 14px; z-index: 250;
     background: rgba(10,10,10,0.82);
     backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    /* Border-top removed so it doesn't duplicate the top-bar's border-bottom;
+       other three sides keep the border. */
     border: 1px solid rgba(255,255,255,0.08);
+    border-top: none;
     padding: 10px 6px;
     flex-direction: column; gap: 4px; min-width: 170px;
   }
@@ -142,6 +150,34 @@
   /* visual separator between menu sections */
   .bar-menu .menu-sep {
     height: 1px; background: rgba(255,255,255,0.08); margin: 6px 10px;
+  }
+  /* ── Accordion sections — each is a <details>/<summary> pair so native
+     keyboard + aria semantics work for free. JS closes siblings on open. */
+  .bar-menu .menu-section {
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .bar-menu .menu-section:first-of-type { border-top: none; }
+  .bar-menu .menu-section summary.menu-label {
+    list-style: none;
+    cursor: pointer;
+    position: relative;
+    padding-right: 22px;
+    user-select: none;
+  }
+  .bar-menu .menu-section summary.menu-label::-webkit-details-marker { display: none; }
+  .bar-menu .menu-section summary.menu-label::after {
+    content: '\25BC';        /* ▼ closed */
+    position: absolute;
+    right: 14px; top: 6px;
+    font-size: 8px; color: var(--dim);
+    transition: transform 0.15s;
+  }
+  .bar-menu .menu-section[open] summary.menu-label::after {
+    transform: rotate(-180deg);
+    color: var(--accent);
+  }
+  .bar-menu .menu-section-body {
+    padding-bottom: 4px;
   }
   /* inline row of choice buttons (transparency/waves) */
   .bar-menu .menu-row {
@@ -1612,6 +1648,22 @@
     font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px;
   }
   .debug-panel.open { display: block; }
+
+  /* ── Accuracy overlay — full-screen guideline layer ─────────────
+     Visible only while the debug panel is open. Red lines mark the
+     top + bottom edges of the track-card body and the WSI brand
+     plate (horizontal rulers against real UI elements). Blue lines
+     are fixed-position screen-center crosshairs. Purely visual — no
+     pointer-events, no interaction. */
+  .debug-guides {
+    display: none;
+    position: fixed; inset: 0;
+    z-index: 499;                   /* one below the debug panel */
+    pointer-events: none;
+  }
+  body.debug-panel-open .debug-guides { display: block; }
+  .debug-guides line.red   { stroke: rgba(224, 64, 64, 0.78); stroke-width: 1; stroke-dasharray: 6 4; }
+  .debug-guides line.blue  { stroke: rgba(80, 160, 255, 0.75); stroke-width: 1; stroke-dasharray: 2 3; }
   .debug-title {
     font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
     color: var(--accent); margin-bottom: 4px;
@@ -2098,45 +2150,59 @@
     <span class="hamburger-lines"><span></span><span></span><span></span></span>
   </button>
   <div class="bar-menu" id="bar-menu">
-    <div class="menu-label" data-i18n="lang-label">Languages</div>
-    <button data-lang-btn="de">Deutsch</button>
-    <button data-lang-btn="en" class="active">English</button>
-    <button data-lang-btn="es">Espa&ntilde;ol</button>
-    <button data-lang-btn="fr">Fran&ccedil;ais</button>
-    <button data-lang-btn="ja">日本語</button>
+    <!-- Languages — always visible by default (accordion leaves this open) -->
+    <details class="menu-section" open>
+      <summary class="menu-label" data-i18n="lang-label">Languages</summary>
+      <div class="menu-section-body">
+        <button data-lang-btn="de">Deutsch</button>
+        <button data-lang-btn="en" class="active">English</button>
+        <button data-lang-btn="es">Espa&ntilde;ol</button>
+        <button data-lang-btn="fr">Fran&ccedil;ais</button>
+        <button data-lang-btn="ja">日本語</button>
+      </div>
+    </details>
 
-    <div class="menu-sep"></div>
-    <div class="menu-label" data-i18n="themes">Themes</div>
-    <button data-theme-btn="auto" class="active" data-i18n="theme-auto">Auto</button>
-    <button data-theme-btn="orange" data-i18n="theme-orange">Industrial Orange</button>
-    <button data-theme-btn="mono" data-i18n="theme-mono">Monochromatic</button>
+    <details class="menu-section">
+      <summary class="menu-label" data-i18n="themes">Themes</summary>
+      <div class="menu-section-body">
+        <button data-theme-btn="auto" class="active" data-i18n="theme-auto">Auto</button>
+        <button data-theme-btn="orange" data-i18n="theme-orange">Industrial Orange</button>
+        <button data-theme-btn="mono" data-i18n="theme-mono">Monochromatic</button>
+      </div>
+    </details>
 
-    <div class="menu-sep"></div>
-    <div class="menu-label" data-i18n="transparency">Transparency</div>
-    <div class="menu-row">
-      <button data-transparency="on"  class="mrbtn active">ON</button>
-      <button data-transparency="off" class="mrbtn">OFF</button>
-    </div>
+    <details class="menu-section">
+      <summary class="menu-label" data-i18n="transparency">Transparency</summary>
+      <div class="menu-section-body">
+        <div class="menu-row">
+          <button data-transparency="on"  class="mrbtn active">ON</button>
+          <button data-transparency="off" class="mrbtn">OFF</button>
+        </div>
+      </div>
+    </details>
 
-    <div class="menu-sep"></div>
-    <div class="menu-label" data-i18n="waves">Waves</div>
-    <div class="menu-row">
-      <button data-waves="full" class="mrbtn active">FULL</button>
-      <button data-waves="75"   class="mrbtn">75%</button>
-      <button data-waves="50"   class="mrbtn">50%</button>
-    </div>
+    <details class="menu-section">
+      <summary class="menu-label" data-i18n="waves">Waves</summary>
+      <div class="menu-section-body">
+        <div class="menu-row">
+          <button data-waves="full" class="mrbtn active">FULL</button>
+          <button data-waves="75"   class="mrbtn">75%</button>
+          <button data-waves="50"   class="mrbtn">50%</button>
+        </div>
 
-    <div class="menu-sublabel" data-i18n="pulse">Pulse</div>
-    <div class="menu-row">
-      <button data-pulse="front" class="mrbtn active" data-i18n="pulse-front">FRONT</button>
-      <button data-pulse="end"   class="mrbtn"        data-i18n="pulse-end">END</button>
-    </div>
+        <div class="menu-sublabel" data-i18n="pulse">Pulse</div>
+        <div class="menu-row">
+          <button data-pulse="front" class="mrbtn active" data-i18n="pulse-front">FRONT</button>
+          <button data-pulse="end"   class="mrbtn"        data-i18n="pulse-end">END</button>
+        </div>
 
-    <div class="menu-sublabel" data-i18n="reflection">Reflection</div>
-    <div class="menu-row">
-      <button data-reflection="off" class="mrbtn active" data-i18n="refl-off">OFF</button>
-      <button data-reflection="on"  class="mrbtn"        data-i18n="refl-on">ON</button>
-    </div>
+        <div class="menu-sublabel" data-i18n="reflection">Reflection</div>
+        <div class="menu-row">
+          <button data-reflection="off" class="mrbtn active" data-i18n="refl-off">OFF</button>
+          <button data-reflection="on"  class="mrbtn"        data-i18n="refl-on">ON</button>
+        </div>
+      </div>
+    </details>
 
     <!-- footer: subtle TWDU mark + copyright (sys font so © renders cleanly) -->
     <div class="menu-footer">
@@ -2210,7 +2276,7 @@
 <!-- brand: dimensions locked on boot so timeline text-swaps (wsi.line1/wsi.line2)
      don't reflow the logo position — users only see the text change, not layout shift. -->
 <div class="brand" id="brand">
-  <span class="ver-badge" id="brandVer" translate="no" aria-label="version 1.0">v1.0</span>
+  <span class="ver-badge" id="brandVer" translate="no" aria-label="version 1.0">v1.5</span>
   <div class="title" id="brandLine1">WSI Radio Receiver</div>
   <div class="sub" id="brandLine2"><span data-i18n="constructed-by">Constructed by</span> <a href="https://www.instagram.com/wyred.on/" target="_blank" rel="noopener">@wyred.on</a></div>
 </div>
@@ -2269,7 +2335,7 @@
       </a>
       <span class="pw-tip-arrow" aria-hidden="true"></span>
     </div>
-    <div class="playback-info-watermark" id="playbackInfoWatermark" data-i18n="pw-watermark" aria-hidden="true">WAVE-ISOLATE RADIO RECEIVER v1.0</div>
+    <div class="playback-info-watermark" id="playbackInfoWatermark" data-i18n="pw-watermark" aria-hidden="true">WAVE-ISOLATE RADIO RECEIVER v1.5</div>
   </div>
 </div>
 
@@ -2318,6 +2384,18 @@
 
 <!-- subtitle stack (SRT) — above tuner, max 3 cues, newest at bottom -->
 <div class="subtitle-stack" id="subtitleStack" aria-hidden="true"></div>
+<!-- Debug accuracy-overlay: full-screen SVG guides drawn whenever the
+     debug panel is open. Red = real UI element edges (card-body top/bottom,
+     brand top/bottom). Blue = screen-center crosshairs for alignment. -->
+<svg class="debug-guides" id="debugGuides" aria-hidden="true" preserveAspectRatio="none">
+  <line class="red"  id="dgCardTop"    x1="0" x2="100%" y1="0" y2="0"/>
+  <line class="red"  id="dgCardBot"    x1="0" x2="100%" y1="0" y2="0"/>
+  <line class="red"  id="dgBrandTop"   x1="0" x2="100%" y1="0" y2="0"/>
+  <line class="red"  id="dgBrandBot"   x1="0" x2="100%" y1="0" y2="0"/>
+  <line class="blue" id="dgCenterX"    x1="50%" x2="50%" y1="0" y2="100%"/>
+  <line class="blue" id="dgCenterY"    x1="0" x2="100%" y1="50%" y2="50%"/>
+</svg>
+
 <!-- debug panel — 5-tap on "RADIO RECEIVER" title OR ?subdbg=1 -->
 <div class="debug-panel" id="debugPanel">
   <div class="debug-title">DEBUG <span class="debug-version" id="debugVersion" translate="no"></span> <span class="debug-close" id="debugClose">&times;</span></div>
@@ -2329,8 +2407,6 @@
       <div class="debug-row"><span>Offset X</span> <input type="range" min="0"    max="60"   step="1"    value="0"   data-css="--card-offset-x"   data-unit="px"><span class="dv" id="dv---card-offset-x">0</span></div>
       <div class="debug-row"><span>Offset Y</span> <input type="range" min="-120" max="120"  step="1"    value="0"   data-css="--card-offset-y"   data-unit="px"><span class="dv" id="dv---card-offset-y">0</span></div>
       <div class="debug-row"><span>Body Max W</span><input type="range" min="30"  max="85"   step="1"    value="60"  data-css="--card-body-max"   data-unit="vw"><span class="dv" id="dv---card-body-max">60</span></div>
-      <div class="debug-row"><span>Font</span>     <input type="range" min="10"   max="20"   step="0.5"  value="14"  data-css="--card-font-size"  data-unit="px"><span class="dv" id="dv---card-font-size">14</span></div>
-      <div class="debug-row"><span>Strip W</span>  <input type="range" min="20"   max="50"   step="1"    value="30"  data-css="--card-strip-w"    data-unit="px"><span class="dv" id="dv---card-strip-w">30</span></div>
     </div>
   </details>
 
@@ -2378,10 +2454,21 @@
       <div class="debug-row" title="Flash position: 0 = newest/front row, grows toward the back of the terrain. Consumed by the Flash button."><span>Flash Pos</span><input type="range" min="0" max="160" step="1" value="0" id="dbgFlashPos"><span class="dv" id="dv-dbgFlashPos">0</span></div>
       <div class="debug-row" title="Uniform zoom around the terrain horizon. 1.0 = normal, &lt;1 = pulled back, &gt;1 = dolly-in. Debug-only; resets on reload."><span>Zoom</span><input type="range" min="0.4" max="2.5" step="0.05" value="1" id="dbgTerrainZoom"><span class="dv" id="dv-dbgTerrainZoom">1.00</span></div>
       <div class="debug-row" title="Mirror the terrain below its horizon as a reflective pool. Uses a vertical fade so the reflection fades into the background."><span>Reflection</span><button class="dbg-btn" id="dbgTerrainReflect" type="button">OFF</button><span class="dv" id="dv-dbgTerrainReflect">—</span></div>
+      <!-- ── Reflection detail controls — only functional while Reflection=ON.
+           Each row updates TerrainDebug.refl* live. GPU cost row at bottom
+           shows a heuristic multiplier so the author knows when a setting
+           gets expensive. -->
+      <div class="debug-row" title="Reflection length: fraction of space below the horizon the mirror covers. 1.0 = full, 0.4 = ~40%."><span>Refl Len</span><input type="range" min="0" max="1" step="0.05" value="1" id="dbgReflLen"><span class="dv" id="dv-dbgReflLen">1.00</span></div>
+      <div class="debug-row" title="Base opacity of the mirrored terrain. Composed with the fade gradient — effective alpha near the horizon = reflAlpha."><span>Refl α</span><input type="range" min="0" max="1" step="0.05" value="0.35" id="dbgReflAlpha"><span class="dv" id="dv-dbgReflAlpha">0.35</span></div>
+      <div class="debug-row" title="Fade-end darkness: alpha of the gradient at the deepest point of the reflection. Higher = reflection dies off harder into the background."><span>Fade End</span><input type="range" min="0" max="1" step="0.05" value="0.85" id="dbgReflFadeEnd"><span class="dv" id="dv-dbgReflFadeEnd">0.85</span></div>
+      <div class="debug-row" title="Perspective skew in degrees. 0 = flat mirror. Positive tilts the mirrored plane away from the viewer (like a tilted reflective floor)."><span>Skew°</span><input type="range" min="-30" max="30" step="1" value="0" id="dbgReflSkew"><span class="dv" id="dv-dbgReflSkew">0</span></div>
+      <div class="debug-row" title="Render quality of the reflection pass. 1.0 = full resolution. Lower = render at reduced sampling density, cheaper GPU."><span>Quality</span><input type="range" min="0.25" max="1" step="0.05" value="1" id="dbgReflQuality"><span class="dv" id="dv-dbgReflQuality">1.00</span></div>
+      <div class="debug-row" title="Blur applied to the reflection pass (via ctx.filter). iOS partial support — silently no-ops where unavailable."><span>Blur</span><input type="range" min="0" max="10" step="0.5" value="0" id="dbgReflBlur"><span class="dv" id="dv-dbgReflBlur">0</span></div>
+      <div class="debug-row" title="Estimated GPU cost multiplier vs baseline (main terrain pass only). Updates live as sliders change."><span>GPU Est</span><span style="flex:1"></span><span class="dv" id="dv-dbgReflGpu" style="font-weight:bold">1.00×</span></div>
     </div>
   </details>
 
-  <details open>
+  <details>
     <summary>Device</summary>
     <div class="debug-body">
       <div class="debug-info" id="debugInfo">—</div>
@@ -2511,7 +2598,7 @@
 // ══════════════════════════════════════════════════════════════════
 // VERSION
 // ──────────────────────────────────────────────────────────────────
-// Single source of truth for the "v1.0" stamp. Surfaced in three places:
+// Single source of truth for the "v1.5" stamp. Surfaced in three places:
 //   · brand chip        — .ver-badge innerText (set on boot)
 //   · modal watermark   — not templated here; the i18n strings bake the version
 //                         into the localized WAVE・ISOLATE string so they stay
@@ -2521,8 +2608,8 @@
 // Bump this on every release; keep in sync with the i18n 'pw-watermark'
 // strings (see I18N dict) when the version changes.
 // ══════════════════════════════════════════════════════════════════
-const WSI_RADIO_VERSION   = '1.0';
-const WSI_RADIO_BUILD_DATE = '2026-04-22';
+const WSI_RADIO_VERSION   = '1.5';
+const WSI_RADIO_BUILD_DATE = '2026-04-23';
 window.__WSI_RADIO_VERSION__  = WSI_RADIO_VERSION;
 window.__WSI_RADIO_BUILD_DATE__ = WSI_RADIO_BUILD_DATE;
 
@@ -2734,7 +2821,7 @@ const I18N = {
     'm-access': 'ACCESS',
     'm-origin': 'ORIGIN',
     'constructed-by': 'Constructed by',
-    'pw-watermark': 'WAVE・ISOLATE RADIO RECEIVER v1.0',
+    'pw-watermark': 'WAVE・ISOLATE RADIO RECEIVER v1.5',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'KEY',
@@ -2802,7 +2889,7 @@ const I18N = {
     'm-access': 'ZUGANG',
     'm-origin': 'URSPRUNG',
     'constructed-by': 'Konstruiert von',
-    'pw-watermark': 'WAVE\u30FBISOLATE-FUNKEMPF\u00C4NGER v1.0',
+    'pw-watermark': 'WAVE\u30FBISOLATE-FUNKEMPF\u00C4NGER v1.5',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'TON',
@@ -2870,7 +2957,7 @@ const I18N = {
     'm-access': 'ACCESO',
     'm-origin': 'ORIGEN',
     'constructed-by': 'Construido por',
-    'pw-watermark': 'WAVE\u30FBISOLATE | RECEPTOR RADIO v1.0',
+    'pw-watermark': 'WAVE\u30FBISOLATE | RECEPTOR RADIO v1.5',
     'signal-label': 'SE\u00D1AL',
     'bpm': 'BPM',
     'key': 'TONO',
@@ -2932,7 +3019,7 @@ const I18N = {
     'm-access': 'ACC\u00C8S',
     'm-origin': 'ORIGINE',
     'constructed-by': 'Construit par',
-    'pw-watermark': 'WAVE\u30FBISOLATE | R\u00C9CEPTEUR RADIO v1.0',
+    'pw-watermark': 'WAVE\u30FBISOLATE | R\u00C9CEPTEUR RADIO v1.5',
     'signal-label': 'SIGNAL',
     'bpm': 'BPM',
     'key': 'TON',
@@ -2994,7 +3081,7 @@ const I18N = {
     'm-access': '接続',
     'm-origin': '原曲',
     'constructed-by': '構築',
-    'pw-watermark': '波\u30FBアイソレート ラジオ受信機 v1.0',
+    'pw-watermark': '波\u30FBアイソレート ラジオ受信機 v1.5',
     'signal-label': '信号',
     'bpm': 'BPM',
     'key': '調',
@@ -4332,7 +4419,45 @@ const TerrainDebug = {
   zoom:       1.0,
   reflection: false,
   flashPos:   0,   // 0 = front row, grows toward back
+
+  // ── Reflection tuning (debug-only) ───────────────────────────────
+  // reflLen       0..1   — how far below horizon the mirror extends as a
+  //                        fraction of available space (1 = full, 0.4 = ~40%)
+  // reflAlpha     0..1   — base opacity of the mirrored terrain (pre-fade)
+  // reflFadeEnd   0..1   — alpha of the dark gradient at its deepest point
+  //                        (higher = reflection dies off harder into the bg)
+  // reflSkew      deg    — horizontal "perspective" skew applied to the
+  //                        mirror. 0 = flat mirror (default). Positive =
+  //                        leaning away (nose pointing at viewer).
+  // reflQuality   0.25..1 — resolution of the reflection pass (lower =
+  //                        cheaper, slightly softer). 1 = full fidelity.
+  // reflBlur      px     — blur applied to the reflection pass. Native
+  //                        ctx.filter = 'blur(Npx)'. iOS partial support
+  //                        (falls back to no blur silently).
+  reflLen:      1.0,
+  reflAlpha:    0.35,
+  reflFadeEnd:  0.85,
+  reflSkew:     0,
+  reflQuality:  1.0,
+  reflBlur:     0,
 };
+
+// Rough GPU-cost estimate for the current reflection settings. Displayed in
+// the debug panel next to the reflection sliders. Baseline = 1× (just the
+// main terrain pass). Reflection adds a second pass whose cost scales with
+// the quality setting, blur amount, and skew (skew forces an additional
+// transform matrix + can defeat layer caching). Pure heuristic, not metered.
+function estimateReflectionGpuCost() {
+  if (!TerrainDebug.reflection) return 1.0;
+  // Second pass at `quality²` cost (lower-res canvas composites faster).
+  let c = 1 + (TerrainDebug.reflQuality * TerrainDebug.reflQuality);
+  // Blur is expensive: +20% per 2 px of blur, capped.
+  if (TerrainDebug.reflBlur > 0) c += Math.min(1.0, TerrainDebug.reflBlur * 0.1);
+  // Skew forces an extra transform matrix each frame + defeats some layer
+  // caching in Chromium's compositor. Small but real.
+  if (Math.abs(TerrainDebug.reflSkew) > 0.5) c += 0.05;
+  return c;
+}
 
 class TerrainRenderer {
   constructor(canvas) {
@@ -4397,28 +4522,64 @@ class TerrainRenderer {
     const frontX = w * (CFG._posX / 100);
     const frontY = h * (CFG._posY / 100);
 
-    // Debug-only reflection pass: draw the terrain UPSIDE-DOWN below the horizon
-    // first, faded + with a vertical gradient mask, then overlay the real terrain
-    // on top. Reflection gets the same zoom so both halves feel synchronized.
+    // Reflection pass — optional, driven by debug sliders. Structure:
+    //   1. Mirror the terrain around frontY (flip vertical)
+    //   2. Apply optional skew for a "tilted surface" perspective
+    //   3. Apply optional blur via ctx.filter
+    //   4. Draw at TerrainDebug.reflAlpha base opacity
+    //   5. Overlay a vertical gradient that fades reflection → bg
+    // Reflection length (reflLen) clips the gradient's endpoint so the
+    // mirror physically shrinks rather than just fading. Quality is a
+    // viewport-relative canvas scale (cheap render at low res) — the
+    // compositor blurs during upscale which doubles as a softness boost.
     if (TerrainDebug.reflection) {
+      const reflLen    = Math.max(0, Math.min(1,  TerrainDebug.reflLen));
+      const reflAlpha  = Math.max(0, Math.min(1,  TerrainDebug.reflAlpha));
+      const reflFadeE  = Math.max(0, Math.min(1,  TerrainDebug.reflFadeEnd));
+      const reflSkew   = TerrainDebug.reflSkew || 0;
+      const reflBlur   = Math.max(0, TerrainDebug.reflBlur || 0);
+      const available  = h - frontY;                 // px below horizon
+      const reflEnd    = frontY + (available * reflLen);
+
       ctx.save();
-      // flip around the horizon (frontY) then fade
+      // Clip to the reflection strip so the mirror can't paint past `reflEnd`.
+      ctx.beginPath();
+      ctx.rect(0, frontY, w, Math.max(0, reflEnd - frontY));
+      ctx.clip();
+
+      // Flip around the horizon.
       ctx.translate(0, frontY * 2);
       ctx.scale(1, -1);
-      ctx.globalAlpha = 0.35;
-      // apply zoom in the flipped space
+
+      // Optional skew — tilts the mirrored plane away from the viewer.
+      if (Math.abs(reflSkew) > 0.01) {
+        const rad = reflSkew * Math.PI / 180;
+        // transform(a, b, c, d, e, f) = [[a c e],[b d f],[0 0 1]]. skewX = tan(rad).
+        ctx.transform(1, 0, Math.tan(rad), 1, 0, 0);
+      }
+
+      // Optional blur — silently no-ops on browsers that don't support it.
+      if (reflBlur > 0.1) {
+        try { ctx.filter = 'blur(' + reflBlur.toFixed(1) + 'px)'; } catch (_) {}
+      }
+
+      ctx.globalAlpha = reflAlpha;
+
+      // Apply zoom in the flipped space (same feel as main pass).
       ctx.translate(frontX, frontY);
       ctx.scale(TerrainDebug.zoom, TerrainDebug.zoom);
       ctx.translate(-frontX, -frontY);
       this._drawTerrain(lineColor, fillColor, accentColor, rainbow);
       ctx.restore();
-      // Gradient fade over the reflection — fades reflected image to bg
-      if (frontY < h) {
-        const grad = ctx.createLinearGradient(0, frontY, 0, h);
+
+      // Fade gradient — bounded by reflLen so shorter reflections die
+      // off faster than long ones.
+      if (reflEnd > frontY) {
+        const grad = ctx.createLinearGradient(0, frontY, 0, reflEnd);
         grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+        grad.addColorStop(1, 'rgba(0,0,0,' + reflFadeE.toFixed(2) + ')');
         ctx.fillStyle = grad;
-        ctx.fillRect(0, frontY, w, h - frontY);
+        ctx.fillRect(0, frontY, w, reflEnd - frontY);
       }
     }
 
@@ -5723,12 +5884,43 @@ tuningBar.addEventListener('click', e => {
 
 // ── hamburger menu ──
 const hamBtn = $('bar-hamburger'), barMenu = $('bar-menu');
+
+// ── Top-bar height measurement — feeds the --top-bar-h CSS var that the
+//    Settings menu uses for its `top:` so the two surfaces form a clean
+//    90° cross. Re-measures on resize + on fonts-ready + when the
+//    hamburger is first tapped (catches late layout shifts).
+(function syncTopBarHeight() {
+  const topBar = document.querySelector('.top-bar');
+  if (!topBar) return;
+  const sync = () => {
+    const h = topBar.getBoundingClientRect().height;
+    if (h > 0) document.documentElement.style.setProperty('--top-bar-h', Math.round(h) + 'px');
+  };
+  sync();
+  window.addEventListener('resize', sync);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(sync).catch(() => {});
+  hamBtn && hamBtn.addEventListener('click', sync, { once: false });
+})();
 hamBtn.addEventListener('click', e => {
   e.stopPropagation();
   barMenu.classList.toggle('open');
 });
 document.addEventListener('click', e => {
   if (!barMenu.contains(e.target) && !hamBtn.contains(e.target)) barMenu.classList.remove('open');
+});
+
+// ── Settings-menu accordion ─────────────────────────────────────
+// Each .menu-section is a <details>. When one opens, close siblings so
+// only one section is expanded at a time (plus Languages which is open
+// by default). Uses the native `toggle` event; stopImmediatePropagation
+// not needed because we only react when `open` flips to true.
+barMenu.querySelectorAll('.menu-section').forEach(d => {
+  d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    barMenu.querySelectorAll('.menu-section').forEach(o => {
+      if (o !== d && o.open) o.open = false;
+    });
+  });
 });
 document.querySelectorAll('.bar-menu [data-lang-btn]').forEach(b => {
   b.addEventListener('click', () => {
@@ -7984,7 +8176,7 @@ function updateDbReadout(freq) {
       if (taps >= TAPS_NEEDED) {
         taps = 0;
         const p = document.getElementById('debugPanel');
-        if (p) p.classList.toggle('open');
+        if (p) { p.classList.toggle('open'); _syncDebugGuides(); }
       }
     });
   }
@@ -7998,7 +8190,39 @@ function updateDbReadout(freq) {
   if (autoOpen) panel.classList.add('open');
 
   const closeBtn = $('debugClose');
-  if (closeBtn) closeBtn.onclick = () => panel.classList.remove('open');
+  if (closeBtn) closeBtn.onclick = () => { panel.classList.remove('open'); _syncDebugGuides(); };
+
+  // ── Debug accuracy-overlay sync ────────────────────────────────
+  // The SVG guides element is full-viewport, positioned: fixed. We just
+  // move its <line> y-coordinates to match the live getBoundingClientRect
+  // of .card-body and .brand. Fires on: open/close, resize, tuner toggle
+  // (class mutation observer below). Vertical crosshair is a pure CSS
+  // 50%/50% — doesn't need JS.
+  function _syncDebugGuides() {
+    const panel = document.getElementById('debugPanel');
+    const open = panel && panel.classList.contains('open');
+    document.body.classList.toggle('debug-panel-open', !!open);
+    if (!open) return;
+    const card  = document.querySelector('.card-body');
+    const brand = document.getElementById('brand');
+    const set = (id, y) => { const el = document.getElementById(id); if (el) { el.setAttribute('y1', y); el.setAttribute('y2', y); } };
+    if (card) {
+      const r = card.getBoundingClientRect();
+      set('dgCardTop', Math.round(r.top));
+      set('dgCardBot', Math.round(r.bottom));
+    }
+    if (brand) {
+      const r = brand.getBoundingClientRect();
+      set('dgBrandTop', Math.round(r.top));
+      set('dgBrandBot', Math.round(r.bottom));
+    }
+  }
+  window.addEventListener('resize', _syncDebugGuides);
+  // React to tuner-collapse toggles + any other body.class change that shifts
+  // card/brand layout (device-profile sub-block swap, etc.).
+  new MutationObserver(_syncDebugGuides).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  // Initial sync if panel was auto-opened.
+  if (autoOpen) setTimeout(_syncDebugGuides, 120);
 
   // Each range may drive:
   //   data-css   → a CSS variable on :root (suffix data-unit)
@@ -8095,6 +8319,18 @@ function updateDbReadout(freq) {
   // auto-show demos only when panel auto-opens (?subdbg=1); otherwise wait for DEMO tap
   if (autoOpen) setTimeout(injectDemo, 1500);
 
+  // ── Debug-panel accordion: only one section expanded at a time ───
+  // Mirrors the Settings menu accordion. Saves vertical space on tall
+  // debug panels (Track Card / Subtitle / Logo / Waveform / Device).
+  panel.querySelectorAll('details').forEach(d => {
+    d.addEventListener('toggle', () => {
+      if (!d.open) return;
+      panel.querySelectorAll('details').forEach(o => {
+        if (o !== d && o.open) o.open = false;
+      });
+    });
+  });
+
   // ── Tweak Lab wiring ────────────────────────────────────────────
   // Freeze / Flash / Flash Pos / Zoom / Reflection. All writes land on the
   // TerrainDebug object that the renderer reads each frame. Safe if the
@@ -8159,8 +8395,39 @@ function updateDbReadout(freq) {
         // flag, and debug button all stay in lockstep + persist.
         Settings.reflection = (Settings.reflection === 'on') ? 'off' : 'on';
         Settings.applyReflection();
+        updateGpuEst();
       });
     }
+
+    // ── Reflection detail sliders ─────────────────────────────────
+    const reflBind = [
+      { el: document.getElementById('dbgReflLen'),      dv: document.getElementById('dv-dbgReflLen'),      key: 'reflLen',     fmt: v => v.toFixed(2) },
+      { el: document.getElementById('dbgReflAlpha'),    dv: document.getElementById('dv-dbgReflAlpha'),    key: 'reflAlpha',   fmt: v => v.toFixed(2) },
+      { el: document.getElementById('dbgReflFadeEnd'),  dv: document.getElementById('dv-dbgReflFadeEnd'),  key: 'reflFadeEnd', fmt: v => v.toFixed(2) },
+      { el: document.getElementById('dbgReflSkew'),     dv: document.getElementById('dv-dbgReflSkew'),     key: 'reflSkew',    fmt: v => v.toFixed(0) },
+      { el: document.getElementById('dbgReflQuality'),  dv: document.getElementById('dv-dbgReflQuality'),  key: 'reflQuality', fmt: v => v.toFixed(2) },
+      { el: document.getElementById('dbgReflBlur'),     dv: document.getElementById('dv-dbgReflBlur'),     key: 'reflBlur',    fmt: v => v.toFixed(1) },
+    ];
+    const dvGpu = document.getElementById('dv-dbgReflGpu');
+    function updateGpuEst() {
+      if (!dvGpu) return;
+      const cost = (typeof estimateReflectionGpuCost === 'function') ? estimateReflectionGpuCost() : 1;
+      dvGpu.textContent = cost.toFixed(2) + '×';
+      // Colour-coded hint: >2× turns amber, >2.5× turns crit red
+      dvGpu.style.color = cost > 2.5 ? 'var(--crit, #e04040)'
+                         : cost > 2   ? '#e0a040'
+                         : 'var(--fg)';
+    }
+    for (const b of reflBind) {
+      if (!b.el) continue;
+      b.el.addEventListener('input', () => {
+        const v = parseFloat(b.el.value);
+        TerrainDebug[b.key] = isFinite(v) ? v : TerrainDebug[b.key];
+        if (b.dv) b.dv.textContent = b.fmt(TerrainDebug[b.key]);
+        updateGpuEst();
+      });
+    }
+    updateGpuEst();
   })();
 
   // ── device / browser / resolution detector ──────────────────────────
