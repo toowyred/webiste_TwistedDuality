@@ -239,7 +239,7 @@
     transform-origin: bottom right;
     text-align: right; pointer-events: none;
     /* translucent glass plate so text stays readable over the noise waveform */
-    padding: 8px 14px;
+    padding: 14px 16px 10px;   /* bumped top padding to make room for the version chip */
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     border-left: 2px solid var(--accent-dim);
@@ -259,6 +259,24 @@
   }
   .brand .sub a { color: var(--accent); text-decoration: none; transition: opacity 0.2s; }
   .brand .sub a:hover { opacity: 0.7; }
+  /* ── version chip: pinned top-right of the brand plate. Sibling of .title
+     so wsi.line1= text swaps can never clobber it. Small, monospace, accent
+     border + faint inset background to read like a hardware serial plate. ── */
+  .brand .ver-badge {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    padding: 1px 5px;
+    border: 1px solid var(--accent-dim);
+    background: rgba(0,0,0,0.35);
+    text-transform: uppercase;
+    pointer-events: none;
+    line-height: 1;
+  }
 
   /* ── track card (middle-left edge; vertical COLLAPSE button + 2-col body) ── */
   :root {
@@ -1567,8 +1585,9 @@
       --subtitle-font-size: 15px;
       --subtitle-padding-y: 3px;
     }
-    .brand { padding: 6px 10px; }
+    .brand { padding: 10px 12px 6px; }
     .brand .title { font-size: 16px; letter-spacing: 4px; }
+    .brand .ver-badge { top: 3px; right: 6px; font-size: 8px; padding: 1px 4px; letter-spacing: 1px; }
     /* card-body: tighter spacing on mobile (font-size + max-width driven by --card-font-size / --card-body-max) */
     .card-collapse { font-size: 10px; letter-spacing: 2px; }
     .card-body { padding: 10px 12px; column-gap: 8px; row-gap: 4px; }
@@ -1833,6 +1852,7 @@
 <!-- brand: dimensions locked on boot so timeline text-swaps (wsi.line1/wsi.line2)
      don't reflow the logo position — users only see the text change, not layout shift. -->
 <div class="brand" id="brand">
+  <span class="ver-badge" id="brandVer" translate="no" aria-label="version 1.0">v1.0</span>
   <div class="title" id="brandLine1">WSI Radio Receiver</div>
   <div class="sub" id="brandLine2"><span data-i18n="constructed-by">Constructed by</span> <a href="https://www.instagram.com/wyred.on/" target="_blank" rel="noopener">@wyred.on</a></div>
 </div>
@@ -5810,7 +5830,9 @@ const SubtitleRunner = {
     if (!stack) return;
     const el = document.createElement('div');
     el.className = 'subtitle-line';
-    el.innerHTML = cue.text.replace(/\n/g, '<br>');   // full HTML formatting per spec
+    // Whitelist-based sanitize: only <b>/<i>/<u>/<strong>/<em>/<br>/<ruby>/<rt>
+    // and <span class="c-*|t-*"> survive. Everything else becomes literal text.
+    el.innerHTML = sanitizeSrtHtml(cue.text);
     stack.appendChild(el);
     this.active.set(i, { el });
     // cap at 3 visible — the oldest on top bites the dust
@@ -5974,6 +5996,62 @@ const PrintImages = {
 
 function escapeHtml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SRT HTML SANITIZER — whitelist-based, applied to every .srt cue before
+// innerHTML. SRT files come from R2 (or local/cfded); the author is the
+// intended editor but the path is not cryptographically authenticated, so
+// a compromised R2 / malicious contributor could inject executable HTML.
+// Allowed:
+//   Tags:   <b> <strong> <i> <em> <u> <br> <ruby> <rt> <span>
+//   Attrs:  <span class="…"> — class limited to an allowlist of CSS tokens
+// Everything else (tags + attrs + text) is escaped and rendered as literal.
+// Implementation: parse into a detached <template> element (HTML parser
+// tolerant of malformed input), walk + prune, serialize back to innerHTML.
+// ══════════════════════════════════════════════════════════════════
+const SRT_ALLOWED_TAGS = new Set(['B','STRONG','I','EM','U','BR','RUBY','RT','SPAN']);
+const SRT_ALLOWED_SPAN_CLASSES = new Set([
+  'c-accent','c-crit','c-good','c-muted','c-dim','t-big','t-tiny'
+]);
+
+function sanitizeSrtHtml(raw) {
+  const tmpl = document.createElement('template');
+  // Convert literal \n + real newlines to <br> first — cue authors type either.
+  const prepped = String(raw || '').replace(/\\n/g, '\n').replace(/\n/g, '<br>');
+  tmpl.innerHTML = prepped;
+
+  const walk = (node) => {
+    // Reverse iteration so removals don't skip siblings.
+    const kids = Array.from(node.childNodes);
+    for (const c of kids) {
+      if (c.nodeType === 1) {           // element
+        if (!SRT_ALLOWED_TAGS.has(c.tagName)) {
+          // Preserve visible text content but drop the tag + its attributes.
+          const text = document.createTextNode(c.textContent || '');
+          node.replaceChild(text, c);
+          continue;
+        }
+        // Strip every attribute except whitelisted <span class="...">.
+        const attrs = Array.from(c.attributes || []);
+        for (const a of attrs) {
+          const isSpanClass = (c.tagName === 'SPAN' && a.name.toLowerCase() === 'class');
+          if (!isSpanClass) { c.removeAttribute(a.name); continue; }
+          // Filter class tokens against the allowlist.
+          const kept = String(a.value || '').split(/\s+/).filter(t => SRT_ALLOWED_SPAN_CLASSES.has(t));
+          if (kept.length) c.setAttribute('class', kept.join(' '));
+          else             c.removeAttribute('class');
+        }
+        walk(c);                         // recurse into whitelisted children
+      }
+    }
+  };
+  walk(tmpl.content);
+
+  // Serialize. We use a throwaway container so we don't mutate the template.
+  const out = document.createElement('div');
+  while (tmpl.content.firstChild) out.appendChild(tmpl.content.firstChild);
+  return out.innerHTML;
 }
 
 // Turn print-overlay source text into safe HTML.
