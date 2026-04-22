@@ -125,6 +125,12 @@
     font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
     color: var(--dim); padding: 6px 14px 2px;
   }
+  /* secondary label nested under a main menu-label (e.g. "Pulse" under "Waves") */
+  .bar-menu .menu-sublabel {
+    font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--dim); padding: 6px 14px 2px;
+    opacity: 0.75;
+  }
   .bar-menu button {
     font-family: inherit; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
     background: none; color: var(--muted);
@@ -1550,6 +1556,20 @@
     background: var(--accent); color: #000; border: none;
     padding: 4px 10px; cursor: pointer; font: inherit; font-weight: bold; letter-spacing: 1px;
     margin-top: 6px;
+    transition: filter 0.15s, box-shadow 0.15s;
+  }
+  /* Toggle-on state — slight inset ring so the "on/off" read is obvious. */
+  .debug-panel button.dbg-btn--on {
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.55), 0 0 0 1px var(--accent);
+  }
+  /* Transient pulse on click (used by the Flash button) — white flash that
+     decays quickly so rapid taps feel responsive. */
+  @keyframes dbg-btn-pulse {
+    0%   { filter: brightness(2.2); }
+    100% { filter: brightness(1);   }
+  }
+  .debug-panel button.dbg-btn--pulse {
+    animation: dbg-btn-pulse 0.26s ease-out;
   }
   .debug-info {
     color: var(--fg); background: rgba(255,255,255,0.04);
@@ -1974,6 +1994,12 @@
       <button data-waves="50"   class="mrbtn">50%</button>
     </div>
 
+    <div class="menu-sublabel" data-i18n="pulse">Pulse</div>
+    <div class="menu-row">
+      <button data-pulse="front" class="mrbtn active" data-i18n="pulse-front">FRONT</button>
+      <button data-pulse="end"   class="mrbtn"        data-i18n="pulse-end">END</button>
+    </div>
+
     <!-- footer: subtle TWDU mark + copyright (sys font so © renders cleanly) -->
     <div class="menu-footer">
       <img class="menu-logo" src="https://assets.afest.io/afest-elements/twdu-white.png" alt="" onerror="this.style.display='none';">
@@ -2201,9 +2227,19 @@
       <div class="debug-row"><span>Iso Off X</span><input type="range" min="-10"  max="10"   step="0.1"  value="4"   data-cfg="isoOffsetX" data-fmt="f1"><span class="dv" id="dv-cfg-isoOffsetX">4.0</span></div>
       <div class="debug-row"><span>Iso Off Y</span><input type="range" min="0"    max="10"   step="0.1"  value="3.4" data-cfg="isoOffsetY" data-fmt="f1"><span class="dv" id="dv-cfg-isoOffsetY">3.4</span></div>
       <div class="debug-row"><span>Height</span>   <input type="range" min="0.2"  max="8"    step="0.1"  value="3.8" data-cfg="heightScale" data-fmt="f1"><span class="dv" id="dv-cfg-heightScale">3.8</span></div>
-      <div class="debug-row"><span>Lines</span>    <input type="range" min="20"   max="160"  step="1"    value="113" data-cfg="terrainLines"><span class="dv" id="dv-cfg-terrainLines">113</span></div>
-      <div class="debug-row"><span>Line W</span>   <input type="range" min="0.1"  max="3"    step="0.1"  value="0.6" data-cfg="lineWidth" data-fmt="f1"><span class="dv" id="dv-cfg-lineWidth">0.6</span></div>
-      <div class="debug-row"><span>Push Rate</span><input type="range" min="1"    max="8"    step="1"    value="3"   data-cfg="pushEvery"><span class="dv" id="dv-cfg-pushEvery">3</span></div>
+      <div class="debug-row" title="Number of historical waveform slices stacked front-to-back on screen. Each slice is one sampled frame; higher = longer visible history + more GPU work."><span>Depth</span>    <input type="range" min="20"   max="160"  step="1"    value="113" data-cfg="terrainLines"><span class="dv" id="dv-cfg-terrainLines">113</span></div>
+      <div class="debug-row" title="Stroke thickness of each waveform line."><span>Line W</span>   <input type="range" min="0.1"  max="3"    step="0.1"  value="0.6" data-cfg="lineWidth" data-fmt="f1"><span class="dv" id="dv-cfg-lineWidth">0.6</span></div>
+      <div class="debug-row" title="How many RAF frames between each waveform slice push. Higher = slower terrain scroll, less CPU."><span>Push Rate</span><input type="range" min="1"    max="8"    step="1"    value="3"   data-cfg="pushEvery"><span class="dv" id="dv-cfg-pushEvery">3</span></div>
+      <!-- ── Tweak Lab: inspection helpers (debug-panel only) ─────────
+           Freezes the scroll so values become visually tweakable, lets
+           you paint a flash anywhere in the ring buffer to see how the
+           pulse renders, applies a uniform zoom, and optionally mirrors
+           the terrain in a reflective pool underneath. -->
+      <div class="debug-row" title="Pause the terrain scroll so you can tweak other sliders against a static snapshot."><span>Freeze</span><button class="dbg-btn" id="dbgTerrainFreeze" type="button">OFF</button><span class="dv" id="dv-dbgTerrainFreeze">—</span></div>
+      <div class="debug-row" title="Paint a beat flash at the slice selected by Flash Pos. Each tap adds a new pulse — the existing 10-slice smear renders just like a real beat."><span>Flash</span><button class="dbg-btn" id="dbgTerrainFlash" type="button">PULSE</button><span class="dv" id="dv-dbgTerrainFlash">—</span></div>
+      <div class="debug-row" title="Flash position: 0 = newest/front row, grows toward the back of the terrain. Consumed by the Flash button."><span>Flash Pos</span><input type="range" min="0" max="160" step="1" value="0" id="dbgFlashPos"><span class="dv" id="dv-dbgFlashPos">0</span></div>
+      <div class="debug-row" title="Uniform zoom around the terrain horizon. 1.0 = normal, &lt;1 = pulled back, &gt;1 = dolly-in. Debug-only; resets on reload."><span>Zoom</span><input type="range" min="0.4" max="2.5" step="0.05" value="1" id="dbgTerrainZoom"><span class="dv" id="dv-dbgTerrainZoom">1.00</span></div>
+      <div class="debug-row" title="Mirror the terrain below its horizon as a reflective pool. Uses a vertical fade so the reflection fades into the background."><span>Reflection</span><button class="dbg-btn" id="dbgTerrainReflect" type="button">OFF</button><span class="dv" id="dv-dbgTerrainReflect">—</span></div>
     </div>
   </details>
 
@@ -2504,6 +2540,9 @@ const I18N = {
     'theme-mono': 'Monochromatic',
     'transparency': 'Transparency',
     'waves': 'Waves',
+    'pulse': 'Pulse',
+    'pulse-front': 'FRONT',
+    'pulse-end': 'END',
     'press-scan': '(press SCAN)',
     'unit-kbps': 'Kbps',
     'unit-signal': 'signal',
@@ -2564,6 +2603,9 @@ const I18N = {
     'theme-mono': 'Monochrom',
     'transparency': 'Transparenz',
     'waves': 'Wellen',
+    'pulse': 'Puls',
+    'pulse-front': 'VORN',
+    'pulse-end': 'ENDE',
     'press-scan': '(SUCHE dr\u00FCcken)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'Signal',
@@ -2624,6 +2666,9 @@ const I18N = {
     'theme-mono': 'Monocrom\u00E1tico',
     'transparency': 'Transparencia',
     'waves': 'Ondas',
+    'pulse': 'Pulso',
+    'pulse-front': 'FRENTE',
+    'pulse-end': 'FONDO',
     'press-scan': '(oprime BUSCAR)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'se\u00F1al',
@@ -2678,6 +2723,9 @@ const I18N = {
     'theme-mono': 'Monochrome',
     'transparency': 'Transparence',
     'waves': 'Ondes',
+    'pulse': 'Impulsion',
+    'pulse-front': 'AVANT',
+    'pulse-end': 'FOND',
     'press-scan': '(appuie sur BALAYER)',
     'unit-kbps': 'Kb/s',
     'unit-signal': 'signal',
@@ -2732,6 +2780,9 @@ const I18N = {
     'theme-mono': '\u30E2\u30CE\u30AF\u30ED\u30FC\u30E0',
     'transparency': '透明',
     'waves': '波形',
+    'pulse': 'パルス',
+    'pulse-front': '手前',
+    'pulse-end': '奥',
     'press-scan': '(\u8D70\u67FB\u3092\u62BC\u3059)',
     'unit-kbps': 'Kb/\u79D2',
     'unit-signal': '\u4FE1\u53F7',
@@ -4077,6 +4128,24 @@ class AudioEngine {
 // ══════════════════════════════════════════════════════════════════
 // TERRAIN RENDERER (unchanged from WSI Player)
 // ══════════════════════════════════════════════════════════════════
+// ──────────────────────────────────────────────────────────────────
+// TERRAIN DEBUG HOOKS — tuning-only overrides, gated behind debug panel.
+// ──────────────────────────────────────────────────────────────────
+// frozen:     pushFrequency() returns early → head stops advancing →
+//             current ring-buffer contents + beat flags lock in place.
+// zoom:       uniform scale around the render origin (centered horizontally
+//             on --posX, vertically on --posY — matches the terrain's own
+//             "horizon" so the zoom feels natural).
+// reflection: second draw pass, vertically flipped + faded, below the terrain.
+// flashPos:   0 = newest/front row, increases → older / back. Consumed by
+//             the debug "Flash" button; writes beatFlags at the target index.
+const TerrainDebug = {
+  frozen:     false,
+  zoom:       1.0,
+  reflection: false,
+  flashPos:   0,   // 0 = front row, grows toward back
+};
+
 class TerrainRenderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -4097,6 +4166,9 @@ class TerrainRenderer {
   }
   pushFrequency(freqData, beatFlag) {
     if (!freqData) return;
+    // Freeze hook (debug panel): skip buffer advance + beat writes so the
+    // current terrain snapshot holds still for inspection / tweaking.
+    if (TerrainDebug.frozen) return;
     this.frameCount++;
     if (this.frameCount % CFG.pushEvery !== 0) return;
     const bins = freqData.length;
@@ -4110,7 +4182,17 @@ class TerrainRenderer {
     const bf = beatFlag || 0;
     this.beatFlags[this.head] = bf;
     if (bf > 0) {
-      for (let k = 1; k < 10; k++) this.beatFlags[(this.head + k) % CFG.terrainLines] = bf;
+      // Smear direction: "front" → backward in the ring buffer so all 10
+      // flagged slices cluster at the NEWEST end (render as a thick band
+      // at the front of the terrain). "end" → forward in the ring buffer
+      // (older slices) so the pulse surfaces at the back of the terrain.
+      const n = CFG.terrainLines;
+      const frontMode = (typeof Settings !== 'undefined' && Settings.pulse === 'front');
+      if (frontMode) {
+        for (let k = 1; k < 10; k++) this.beatFlags[((this.head - k) + n * 10) % n] = bf;
+      } else {
+        for (let k = 1; k < 10; k++) this.beatFlags[(this.head + k) % n] = bf;
+      }
     }
     this.head = (this.head + 1) % CFG.terrainLines;
   }
@@ -4120,6 +4202,54 @@ class TerrainRenderer {
     const ctx = this.ctx;
     const w = this.w, h = this.h;
     ctx.clearRect(0, 0, w, h);
+
+    // Compute the render origin (front-row anchor). Zoom pivots on this point
+    // so scaling visually "dollies in" on the waveform's horizon rather than
+    // drifting toward a screen corner.
+    const frontX = w * (CFG._posX / 100);
+    const frontY = h * (CFG._posY / 100);
+
+    // Debug-only reflection pass: draw the terrain UPSIDE-DOWN below the horizon
+    // first, faded + with a vertical gradient mask, then overlay the real terrain
+    // on top. Reflection gets the same zoom so both halves feel synchronized.
+    if (TerrainDebug.reflection) {
+      ctx.save();
+      // flip around the horizon (frontY) then fade
+      ctx.translate(0, frontY * 2);
+      ctx.scale(1, -1);
+      ctx.globalAlpha = 0.35;
+      // apply zoom in the flipped space
+      ctx.translate(frontX, frontY);
+      ctx.scale(TerrainDebug.zoom, TerrainDebug.zoom);
+      ctx.translate(-frontX, -frontY);
+      this._drawTerrain(lineColor, fillColor, accentColor, rainbow);
+      ctx.restore();
+      // Gradient fade over the reflection — fades reflected image to bg
+      if (frontY < h) {
+        const grad = ctx.createLinearGradient(0, frontY, 0, h);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, frontY, w, h - frontY);
+      }
+    }
+
+    // Main terrain pass — with zoom transform around the horizon.
+    ctx.save();
+    if (TerrainDebug.zoom !== 1) {
+      ctx.translate(frontX, frontY);
+      ctx.scale(TerrainDebug.zoom, TerrainDebug.zoom);
+      ctx.translate(-frontX, -frontY);
+    }
+    this._drawTerrain(lineColor, fillColor, accentColor, rainbow);
+    ctx.restore();
+  }
+
+  // Extracted terrain-draw loop — used by both the main pass and the
+  // debug reflection pass so they stay visually identical.
+  _drawTerrain(lineColor, fillColor, accentColor, rainbow) {
+    const ctx = this.ctx;
+    const w = this.w, h = this.h;
 
     const totalWidth = w * (CFG._width / 100);
     const n = CFG.terrainLines;
@@ -4168,9 +4298,9 @@ class TerrainRenderer {
       let color;
       if (rainbow) {
         // hue drifts from `rainbow.hue` at the newest/front line to `hue + hueSpan` at the back
-        const h = (((rainbow.hue + depth * rainbow.hueSpan) % 360) + 360) % 360;
+        const hh = (((rainbow.hue + depth * rainbow.hueSpan) % 360) + 360) % 360;
         const l = flag === 2 ? Math.min(rainbow.lightness + 18, 95) : rainbow.lightness;
-        color = 'hsl(' + h.toFixed(1) + ', 100%, ' + l + '%)';
+        color = 'hsl(' + hh.toFixed(1) + ', 100%, ' + l + '%)';
       } else {
         color = flag === 2 ? accentColor : lineColor;
       }
@@ -4180,6 +4310,24 @@ class TerrainRenderer {
       ctx.lineWidth = flag === 2 ? CFG.lineWidth * 1.8 : CFG.lineWidth;
       ctx.stroke();
       ctx.globalAlpha = 1;
+    }
+  }
+
+  // Debug helper: write a beat flag at the configured flashPos slice.
+  // flashPos=0 targets the front-row (newest). Smear direction follows the
+  // Settings.pulse preference so the debug flash matches what a real beat
+  // would look like under the current pulse setting.
+  debugFlashAt(offset) {
+    const n = CFG.terrainLines;
+    if (!n) return;
+    const clamped = Math.max(0, Math.min(n - 1, offset | 0));
+    const target = ((this.head - 1 - clamped) + n * 2) % n;
+    const frontMode = (typeof Settings !== 'undefined' && Settings.pulse === 'front');
+    for (let k = 0; k < 10; k++) {
+      const idx = frontMode
+        ? ((target - k) + n * 10) % n      // cluster at newest slices
+        : (target + k) % n;                // spread into older slices
+      this.beatFlags[idx] = 2;
     }
   }
 }
@@ -7544,6 +7692,72 @@ function updateDbReadout(freq) {
   // auto-show demos only when panel auto-opens (?subdbg=1); otherwise wait for DEMO tap
   if (autoOpen) setTimeout(injectDemo, 1500);
 
+  // ── Tweak Lab wiring ────────────────────────────────────────────
+  // Freeze / Flash / Flash Pos / Zoom / Reflection. All writes land on the
+  // TerrainDebug object that the renderer reads each frame. Safe if the
+  // buttons aren't present (older HTML snapshot).
+  (function wireTweakLab() {
+    const btnFreeze  = document.getElementById('dbgTerrainFreeze');
+    const btnFlash   = document.getElementById('dbgTerrainFlash');
+    const flashPos   = document.getElementById('dbgFlashPos');
+    const dvFlashPos = document.getElementById('dv-dbgFlashPos');
+    const zoomEl     = document.getElementById('dbgTerrainZoom');
+    const dvZoom     = document.getElementById('dv-dbgTerrainZoom');
+    const btnReflect = document.getElementById('dbgTerrainReflect');
+    const setBtnOn = (btn, on, onLabel, offLabel) => {
+      if (!btn) return;
+      btn.textContent = on ? (onLabel || 'ON') : (offLabel || 'OFF');
+      btn.classList.toggle('dbg-btn--on', on);
+    };
+    if (btnFreeze) {
+      btnFreeze.addEventListener('click', () => {
+        TerrainDebug.frozen = !TerrainDebug.frozen;
+        setBtnOn(btnFreeze, TerrainDebug.frozen, 'FROZEN', 'OFF');
+      });
+    }
+    if (btnFlash) {
+      btnFlash.addEventListener('click', () => {
+        if (typeof terrain !== 'undefined' && terrain && terrain.debugFlashAt) {
+          terrain.debugFlashAt(TerrainDebug.flashPos);
+        }
+        // Visual pulse on the button itself so the click feels responsive
+        // even when the terrain is scrolling off-screen.
+        btnFlash.classList.add('dbg-btn--pulse');
+        setTimeout(() => btnFlash.classList.remove('dbg-btn--pulse'), 260);
+      });
+    }
+    if (flashPos) {
+      // Sync the slider's max to CFG.terrainLines (depth) so it never overshoots.
+      const syncMax = () => {
+        flashPos.max = String(Math.max(1, CFG.terrainLines - 1));
+        if (parseInt(flashPos.value, 10) > (CFG.terrainLines - 1)) {
+          flashPos.value = String(CFG.terrainLines - 1);
+        }
+      };
+      syncMax();
+      flashPos.addEventListener('input', () => {
+        TerrainDebug.flashPos = parseInt(flashPos.value, 10) || 0;
+        if (dvFlashPos) dvFlashPos.textContent = String(TerrainDebug.flashPos);
+      });
+      // Re-sync whenever depth changes via its own slider.
+      const depthEl = document.querySelector('input[data-cfg="terrainLines"]');
+      if (depthEl) depthEl.addEventListener('input', syncMax);
+    }
+    if (zoomEl) {
+      zoomEl.addEventListener('input', () => {
+        const v = parseFloat(zoomEl.value) || 1;
+        TerrainDebug.zoom = v;
+        if (dvZoom) dvZoom.textContent = v.toFixed(2);
+      });
+    }
+    if (btnReflect) {
+      btnReflect.addEventListener('click', () => {
+        TerrainDebug.reflection = !TerrainDebug.reflection;
+        setBtnOn(btnReflect, TerrainDebug.reflection, 'ON', 'OFF');
+      });
+    }
+  })();
+
   // ── device / browser / resolution detector ──────────────────────────
   function detectDevice() {
     const ua = navigator.userAgent || '';
@@ -8890,6 +9104,11 @@ const Settings = {
   transparency: localStorage.getItem('td-radio-transparency') || 'on',
   waves: localStorage.getItem('td-radio-waves') || 'full',
   theme: localStorage.getItem('td-radio-theme') || 'auto',
+  // Pulse smear direction. 'front' → pulse renders as a thick bright band at
+  // the front row of the terrain (10-slice smear laid BACKWARD in the ring
+  // buffer so all slices are near the newest). 'end' → smear laid FORWARD
+  // (older slices), pulse surfaces at the deepest part of the terrain.
+  pulse: localStorage.getItem('td-radio-pulse') || 'front',
 
   applyTransparency() {
     document.documentElement.classList.toggle('no-transparency', this.transparency === 'off');
@@ -8946,6 +9165,16 @@ const Settings = {
       b.classList.toggle('active', b.dataset.waves === this.waves);
     });
     localStorage.setItem('td-radio-waves', this.waves);
+  },
+
+  applyPulse() {
+    // Value just gets mirrored to the button row + persisted; the renderer
+    // reads Settings.pulse directly each frame via terrain's smear helper,
+    // so no recompute is needed here.
+    document.querySelectorAll('.bar-menu [data-pulse]').forEach(b => {
+      b.classList.toggle('active', b.dataset.pulse === this.pulse);
+    });
+    localStorage.setItem('td-radio-pulse', this.pulse);
   }
 };
 
@@ -8970,11 +9199,19 @@ document.querySelectorAll('.bar-menu [data-theme-btn]').forEach(b => {
     Settings.applyTheme();
   });
 });
+document.querySelectorAll('.bar-menu [data-pulse]').forEach(b => {
+  b.addEventListener('click', e => {
+    e.stopPropagation();
+    Settings.pulse = b.dataset.pulse;
+    Settings.applyPulse();
+  });
+});
 
 // apply saved settings on boot
 Settings.applyTransparency();
 Settings.applyWaves();
 Settings.applyTheme();
+Settings.applyPulse();
 
 </script>
 </body>
