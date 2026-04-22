@@ -8368,12 +8368,100 @@ const CodesRegistry = {
   const ov  = document.getElementById('playbackInfoOverlay');
   const closeBtn = document.getElementById('playbackInfoClose');
   if (!btn || !ov) return;
+
+  // "send it my way" tooltip — handled here so modal-close also hides it.
+  const tipTrigger = document.getElementById('pwTipTrigger');
+  const tipBubble  = document.getElementById('pwTipBubble');
+  const box        = ov.querySelector('.playback-info-box');
+
+  function positionBubble() {
+    if (!tipTrigger || !tipBubble || !box) return;
+    // Position above the trigger, aligned so the arrow centers on it. Uses
+    // getBoundingClientRect against the BOX (positioning ancestor) so scroll
+    // inside the box shifts the trigger's origin — bubble follows automatically.
+    const boxR = box.getBoundingClientRect();
+    const trR  = tipTrigger.getBoundingClientRect();
+    const bW   = tipBubble.offsetWidth || 220;
+    const bH   = tipBubble.offsetHeight || 44;
+    const triggerCenterX = (trR.left + trR.right) / 2;
+    const xRel = triggerCenterX - boxR.left;
+    // Clamp so the bubble doesn't overflow the box horizontally.
+    const minX = 10 + bW / 2;
+    const maxX = boxR.width - 10 - bW / 2;
+    const clampedX = Math.max(minX, Math.min(maxX, xRel));
+    const left = Math.round(clampedX - bW / 2);
+    const top  = Math.round(trR.top - boxR.top - bH - 10);
+    tipBubble.style.left = left + 'px';
+    tipBubble.style.top  = top  + 'px';
+    // Aim the arrow at the trigger even when the bubble was clamped.
+    const arrow = tipBubble.querySelector('.pw-tip-arrow');
+    if (arrow) arrow.style.left = Math.round(xRel - left) + 'px';
+  }
+
+  function showTip()  {
+    if (!tipBubble) return;
+    tipBubble.classList.add('show');
+    tipBubble.setAttribute('aria-hidden', 'false');
+    if (tipTrigger) tipTrigger.setAttribute('aria-expanded', 'true');
+    positionBubble();
+  }
+  function hideTip() {
+    if (!tipBubble) return;
+    tipBubble.classList.remove('show');
+    tipBubble.setAttribute('aria-hidden', 'true');
+    if (tipTrigger) tipTrigger.setAttribute('aria-expanded', 'false');
+  }
+
+  if (tipTrigger) {
+    // Hover: desktop. Click: mobile (and desktop fallback). Esc: close.
+    let hovering = false;
+    tipTrigger.addEventListener('mouseenter', () => { hovering = true; showTip(); });
+    tipTrigger.addEventListener('mouseleave', () => {
+      hovering = false;
+      // small grace so the user can drag into the bubble to click the link
+      setTimeout(() => { if (!hovering && !tipBubble.matches(':hover')) hideTip(); }, 180);
+    });
+    tipBubble.addEventListener('mouseenter', () => { hovering = true; });
+    tipBubble.addEventListener('mouseleave', () => { hovering = false; hideTip(); });
+    tipTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (tipBubble.classList.contains('show')) hideTip(); else showTip();
+    });
+    tipTrigger.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showTip(); }
+    });
+    // Tap outside → close. Run on document so any modal background click closes it.
+    document.addEventListener('click', (e) => {
+      if (!tipBubble.classList.contains('show')) return;
+      if (tipBubble.contains(e.target) || tipTrigger.contains(e.target)) return;
+      hideTip();
+    });
+    // Reposition on scroll inside the modal + viewport resize.
+    const scrollRegion = box && box.querySelector('.playback-info-scroll');
+    if (scrollRegion) scrollRegion.addEventListener('scroll', () => {
+      if (tipBubble.classList.contains('show')) positionBubble();
+    });
+    window.addEventListener('resize', () => {
+      if (tipBubble.classList.contains('show')) positionBubble();
+    });
+  }
+
   const open  = () => { ov.classList.add('open');  ov.setAttribute('aria-hidden', 'false'); };
-  const close = () => { ov.classList.remove('open'); ov.setAttribute('aria-hidden', 'true'); };
+  const close = () => {
+    ov.classList.remove('open'); ov.setAttribute('aria-hidden', 'true');
+    // Tooltip lives inside the modal but its show-state should not persist
+    // across open/close cycles — collapse it so the next open is clean.
+    hideTip();
+  };
   btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
   if (closeBtn) closeBtn.addEventListener('click', close);
   ov.addEventListener('click', (e) => { if (e.target === ov) close(); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && ov.classList.contains('open')) close(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    // Esc cascade: tooltip first, modal second
+    if (tipBubble && tipBubble.classList.contains('show')) { hideTip(); return; }
+    if (ov.classList.contains('open')) close();
+  });
 })();
 
 (function initCodeUnlockUI() {
