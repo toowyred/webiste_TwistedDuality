@@ -3249,6 +3249,74 @@ const BlockRegistry = {
     if (!t) return null;
     const ff = (t.files && t.files[0]) || (t.meta && t.meta['offline.file']) || '';
     return this.blockOfTrackId(ff.replace(/-(normal|high|off)\.(mp3|wav)$/i, ''));
+  },
+
+  /**
+   * Refresh every already-loaded block's shards in place. Used by the "?"
+   * refresh-metadata watchdog so corrected titles / prints / timeline edits
+   * pick up without a full reload. Existing Registry.tracks entries are
+   * updated in-place by file-stem match (index stable → currentIdx /
+   * _recentPlayed remain valid). New tracks appended. Unloaded blocks are
+   * NOT eagerly fetched — they'll load on demand via the normal Phase B paths.
+   */
+  async refreshLoaded() {
+    if (!this.blocksBase) return false;
+    const loadedNums = [...this.loaded];
+    if (!loadedNums.length) return false;
+    const tasks = [];
+    for (const num of loadedNums) {
+      const entry = this.manifest.find(b => b.num === num);
+      if (!entry) continue;
+      for (const kind of ['signal', 'rhythm', 'links', 'skip']) {
+        if (!entry.files.has(kind)) continue;
+        const url = this.blocksBase + this._shardName(kind, num);
+        tasks.push(
+          fetch(url, { cache: 'no-cache' })
+            .then(r => r.ok ? r.text() : null)
+            .then(text => { if (text) this._applyRefresh(kind, text); })
+            .catch(() => {/* silent — optional shard */})
+        );
+      }
+    }
+    await Promise.all(tasks);
+    return true;
+  },
+
+  /**
+   * Like _apply but for the refresh path — signal uses find-by-file-stem to
+   * overwrite existing Registry.tracks entries in place (never append a
+   * duplicate real track). rhythm/links/skip already parse additively into
+   * maps, so their existing _apply is safe to reuse verbatim.
+   */
+  _applyRefresh(kind, text) {
+    if (kind === 'signal') {
+      const parsed = parseSignalDat(text);
+      for (const tr of parsed.tracks) {
+        const firstFile = (tr.files && tr.files[0]) || '';
+        const stem = firstFile.replace(/-(normal|high|off)\.(mp3|wav)$/i, '');
+        let replaced = false;
+        if (stem) {
+          for (let i = 0; i < Registry.tracks.length; i++) {
+            const existing = Registry.tracks[i];
+            const eff = (existing && existing.files && existing.files[0]) || '';
+            const estem = eff.replace(/-(normal|high|off)\.(mp3|wav)$/i, '');
+            if (estem === stem) {
+              Registry.tracks[i] = tr;
+              replaced = true;
+              break;
+            }
+          }
+        }
+        if (!replaced) Registry.tracks.push(tr);
+      }
+      // Ignore any parsed.globals in shards — globals live in blocks/globals.dat.
+    } else if (kind === 'rhythm') {
+      if (typeof BeatsRegistry !== 'undefined' && BeatsRegistry._parse) BeatsRegistry._parse(text);
+    } else if (kind === 'links') {
+      if (typeof LinksRegistry !== 'undefined' && LinksRegistry.parse) LinksRegistry.parse(text);
+    } else if (kind === 'skip') {
+      if (typeof ScanSkipRegistry !== 'undefined' && ScanSkipRegistry._parse) ScanSkipRegistry._parse(text);
+    }
   }
 };
 
@@ -4877,6 +4945,35 @@ document.addEventListener('keydown', (e) => {
 // to first-filename equality for resilience.
 async function refetchSignalMeta() {
   if (!Registry.source) return false;
+
+  // Blocks mode: refresh every loaded shard in place. The legacy monolithic
+  // cf-signal.dat path below is unsafe here — the length-match branch does a
+  // position-based meta copy that corrupts ordering when Registry.tracks is
+  // [real tracks + synthetic orphans] but parsed.tracks is a plain sequence.
+  if (Registry.usingBlocks && typeof BlockRegistry !== 'undefined') {
+    await BlockRegistry.refreshLoaded();
+    // Globals also live in a separate shard (blocks/globals.dat) — re-fetch so
+    // crossfadeMs / cyclerTick / printDefault edits land.
+    try {
+      const gurl = BlockRegistry.blocksBase + 'globals.dat';
+      const gres = await fetch(gurl, { cache: 'no-cache' });
+      if (gres.ok) {
+        const gtext = await gres.text();
+        const gparsed = parseSignalDat(gtext);
+        if (gparsed.globals) {
+          const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : null; };
+          const g = gparsed.globals;
+          if (num(g.cyclerTick)   != null && num(g.cyclerTick)   > 0) Registry.globals.cyclerTick   = num(g.cyclerTick);
+          if (num(g.printDefault) != null && num(g.printDefault) > 0) Registry.globals.printDefault = num(g.printDefault);
+          if (g.crossfadeMs    != null && num(g.crossfadeMs)    != null) Registry.globals.crossfadeMs    = Math.max(0, Math.min(2000, num(g.crossfadeMs)));
+          if (g.interNoiseLevel!= null && num(g.interNoiseLevel)!= null) Registry.globals.interNoiseLevel= Math.max(0, Math.min(1,    num(g.interNoiseLevel)));
+        }
+      }
+    } catch (_) { /* silent */ }
+    return true;
+  }
+
+  // Legacy cf-signal.dat monolith path (non-blocks tiers).
   const res = await fetch(Registry.source.signal, { cache: 'no-cache' });
   if (!res.ok) return false;
   const text = await res.text();
@@ -6418,6 +6515,22 @@ btnScan.addEventListener('click', async () => {
     return;
   }
 
+  // Synthetic-orphan guard: if nextIdx came from BlockRegistry's rhythm-orphan
+  // fallback (block not loaded yet), kick off its block-load in parallel with
+  // the audio fetch. MUST await before applyMeta or the card-body renders all
+  // "unknown" rows until the watchdog refresh or a tuning-bar nudge. The block
+  // load is ~200-400 ms vs ~900 ms noise-cover so it's absorbed invisibly.
+  let _blockPrimeP = null;
+  if (Registry.usingBlocks && typeof BlockRegistry !== 'undefined') {
+    const blockNum = BlockRegistry.blockOfTrackIdx(nextIdx);
+    if (blockNum != null && !BlockRegistry.loaded.has(blockNum)
+        && BlockRegistry.manifest.some(b => b.num === blockNum)) {
+      console.log('[scan] pre-applyMeta → loading block b' +
+                  String(blockNum).padStart(2, '0') + ' for idx ' + nextIdx);
+      _blockPrimeP = BlockRegistry.loadBlock(blockNum).catch(() => {/* silent */});
+    }
+  }
+
   // cue up static noise
   engine.init();
   await engine.resume();
@@ -6456,6 +6569,10 @@ btnScan.addEventListener('click', async () => {
   if (elapsed < tuneDur) await new Promise(r => setTimeout(r, tuneDur - elapsed));
 
   if (decodeOk) {
+    // Await the synthetic-orphan block-prime before applyMeta so the card-body
+    // renders real meta, not the "unknown" synthetic stub. Block-load was
+    // kicked in parallel with the audio fetch — usually already resolved.
+    if (_blockPrimeP) { try { await _blockPrimeP; } catch (_) {} }
     Registry.currentIdx = nextIdx;
     Registry.rememberPlayed(nextIdx);     // rolling "last 3" window for pickRandomIdx
     applyMeta(nextIdx);
