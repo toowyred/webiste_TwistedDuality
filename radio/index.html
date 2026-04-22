@@ -2,7 +2,7 @@
 <html lang="en" data-theme="dark_orange">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <link rel="icon" type="image/png" href="https://assets.afest.io/afest-elements/favicon.png">
 <title>TWISTED DUALITY · Radio Receiver</title>
@@ -34,12 +34,22 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; overflow: hidden; }
+  html, body {
+    height: 100%; overflow: hidden;
+    /* Block native pull-to-refresh (Android Chrome swipe-down at top of page).
+       The whole player is one fixed surface; there's nothing to scroll here. */
+    overscroll-behavior: none;
+    /* Disable the 300 ms click delay AND double-tap-to-zoom. iOS ignores
+       user-scalable=no since iOS 10 for accessibility; this covers that case. */
+    touch-action: manipulation;
+  }
   body {
     background: var(--bg); color: var(--fg);
     font-family: 'WDXL Lubrifont', 'Courier New', monospace;
     position: relative;
     -webkit-user-select: none; user-select: none;
+    /* iOS Safari rubber-band momentum → unwanted scrolling of fixed layout. */
+    -webkit-overflow-scrolling: auto;
   }
 
   /* grid-bg + vignette */
@@ -1873,12 +1883,12 @@
 <!-- playback info modal — opened by the [i] button -->
 <div class="playback-info-overlay" id="playbackInfoOverlay" aria-hidden="true">
   <div class="playback-info-box" role="dialog" aria-modal="true" aria-labelledby="playbackInfoTitle">
-    <div class="playback-info-title" id="playbackInfoTitle">Playback on iPhone Air (Safari 26 / iOS 18)</div>
+    <div class="playback-info-title" id="playbackInfoTitle">Pitch wobble on mobile (most common on iPhone Air)</div>
     <div class="playback-info-body">
-      <p>You may notice the audio briefly wobble in pitch on this device. It's not an encoding issue &mdash; the same file plays cleanly on every other iPhone and Android we've tested, and through FL Studio and desktop browsers.</p>
-      <p>The root cause is in iPhone Air's audio stack: iOS runs a sample-rate bridge between the <code>&lt;audio&gt;</code> element and the Web Audio visualizer, and that bridge intermittently resamples under thermal / power-management events, audio-session arbitration (silent switch, Bluetooth scans), or background chrome. Other iPhones don't exhibit it because they bypass the resample path.</p>
+      <p>You may occasionally hear the audio briefly speed up (pitch shift) for about a second, then settle back to normal. It's not an encoding issue &mdash; our audio files are completely healthy, and the same files play cleanly through FL Studio, desktop browsers, and most other phones.</p>
+      <p>We believe the cause is the device's audio stack trying to "catch up" with the dynamic BPM variations typical of EDM tracks. It briefly speeds playback as if it needs to compensate, then realizes there's nothing to compensate for and returns to the correct rate. iPhone Air is the most prone, but it can happen on other mobile devices too &mdash; especially when switching tasks, backgrounding the app, or moving between apps while the player is active.</p>
       <p>We've ruled out our own code: playback rate is pinned to 1.0, the fetch is buffer-complete before playback, no encoding anomalies in the file. The browser's <code>currentTime</code> tracks accurately &mdash; no seconds are lost &mdash; which is why lock-screen scrubbing is unaffected.</p>
-      <p>A potential future workaround is to bypass the Web Audio analyzer on iPhone Air (losing the visualizer) but that's a last resort. For now this is a "known Safari quirk" outside our reach.</p>
+      <p>For now this sits outside our reach. If it bothers you, desktop or FL Studio playback will always be pristine.</p>
     </div>
     <button class="playback-info-close" id="playbackInfoClose" type="button">[ CLOSE ]</button>
   </div>
