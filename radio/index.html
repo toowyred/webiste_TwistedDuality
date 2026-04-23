@@ -2946,36 +2946,23 @@
 
     <!-- ── UPDATES page — visible when data-page="updates" on the box ─── -->
     <div class="playback-info-body playback-info-body--updates">
-      <p><strong>Since the pitch-wobble write-up,</strong> the player picked up a pile of new tricks. This is the short tour.</p>
+      <p>Since the last check-in, I've been putting in work to make WSI Radio faster, cleaner, and more immersive. Here's the short tour of your new gear.</p>
 
-      <p><strong>Visuals</strong><br>
-      <strong>SCAN + PLAY</strong> shrank to icon tiles on the mini tuner (the collapsed bottom strip on mobile). On desktop landscape they show icon + label. Either way the track-name readout gets the freed-up space and stretches right up to the time counter.</p>
+      <p><strong>THE VISUAL UPGRADE</strong></p>
 
-      <p><strong>Reflection mode</strong> lives in Settings → Waves. Mirrors the waveform below its horizon like a reflective pool — the tuner panel fades to match the top-bar so the whole player reads as a glass floor. Off by default; flip it on when you want the Power PC look.</p>
+      <p><strong>Cleaner controls.</strong> On mobile, SCAN, PLAY, and the transport icons shrank to tidy tiles so the track name can stretch the full width of the readout. You'll always know exactly what's in the mix at a glance.</p>
 
-      <p><strong>Pulse</strong> also in Settings → Waves. FRONT = pulse lands as a thick bright band at the newest row (default). END = pulse surfaces at the deepest row of the terrain instead. Either vibe, your call.</p>
+      <p><strong>Reflection FX.</strong> Want the premium Gamer-PC aesthetic? Head to <strong>Settings &rarr; Waves &rarr; Reflection</strong>. The waveform mirrors below its horizon into a reflective pool, and the tuner panel fades to match the top-bar &mdash; the whole player reads as a single sheet of glass. Off by default; flip it on when you're in the mood.</p>
 
-      <p><strong>Under the hood</strong><br>
-      <strong>v1.0 → v1.5</strong>. Real sticker, earned. The little <code>v1.5</code> chip on the WSI logo confirms you're on the current cut.</p>
+      <p><strong>UNDER THE HOOD</strong></p>
 
-      <p>Library's now <strong>block-sharded</strong> — the player lazy-loads chunks of 10 tracks instead of the whole dictionary up front. Faster first paint, esp. as the library grows past 50 tracks. Covers a big CF outage too: if the online tier dies, the player falls through to a committed GitHub snapshot so you still hear something.</p>
+      <p><strong>Block-loading.</strong> Instead of waiting for the whole library to load, the catalog now arrives in chunks of ten tracks. Way snappier first paint, and browsing stays smooth as the library grows. Bonus: if the main CDN ever hiccups, the player quietly falls through to a committed backup &mdash; you'll still hear something.</p>
 
-      <p>Hand-tuned <strong>device profile for iPhone 17 Pro</strong> baked in so it looks right without touching a thing. Other phones + desktop still get sensible defaults.</p>
+      <p><strong>Rock-solid stability.</strong> Hand-tuned profiles for common mobile devices (iPhone 17 Pro in particular) so layouts look right without touching a setting. Closed a real security hole in the subtitle renderer. Disabled accidental pull-to-refresh + double-tap zoom on mobile, so you can't swipe yourself out of a song.</p>
 
-      <p>Closed a real <strong>XSS hole</strong> in the subtitle renderer — SRT files can't smuggle <code>&lt;script&gt;</code> through the whitelist anymore. Accidentally-clicking-refresh via <strong>pull-to-refresh + double-tap zoom</strong> both disabled on mobile. No more losing your place swiping on a song.</p>
+      <p><strong>Browser smart-detect.</strong> If you're reading this inside Instagram, Facebook, or TikTok's built-in browser, a little nudge pointed you toward Safari (iOS) or Chrome (Android). Those embedded browsers throttle audio and animation hard &mdash; switching unlocks the full, high-fidelity experience.</p>
 
-      <p>If you're reading this from inside Instagram, Facebook, or TikTok's built-in browser, a toast nudged you to open in Safari (iOS) or Chrome (Android) — their embedded WebViews throttle audio + animation hard. Safari / Chrome is where the radio really cooks.</p>
-
-      <p><strong>Debug / power users</strong><br>
-      Tap the "RADIO RECEIVER" title bar 7 times fast to open the debug panel. New <strong>Tweak Lab</strong>: Freeze the terrain for static inspection, paint a pulse flash at any depth, uniform Zoom, and reflection detail sliders — Length / Alpha / Fade End / Skew° / Quality / Blur. Live GPU-cost estimate tells you when you've gone too far.</p>
-
-      <p>While the debug panel is open, the screen gets guideline overlays — red dashed lines on the real top/bottom edges of the track card + WSI logo, blue dashed crosshairs at screen center. Helps eyeball alignment without a ruler.</p>
-
-      <p><strong>Small things worth noticing</strong><br>
-      · Settings menu is an accordion now — one section open at a time, smooth slide.<br>
-      · The track card's expand/collapse button is where it is for a reason (visit this modal after cache-clear to see the full guide).<br>
-      · In the Camelot wheel, your current key's wedge glows in accent; harmonically-compatible keys dim with it so you can see mix candidates at a glance.<br>
-      · A small <strong>v1.5</strong> chip lives in the brand plate's corner.</p>
+      <p><strong>Harmonic Mixing (preview).</strong> Tap the <strong>KEY</strong> readout to open the Camelot Wheel. Your current key's wedge glows in the accent color while every harmonically-compatible key dims in sync &mdash; spot your next perfect mix candidate at a glance. This is a taste of what's coming in v2, so stay tuned.</p>
 
       <p class="pw-regards">
         Catch you in the mix,<br>
