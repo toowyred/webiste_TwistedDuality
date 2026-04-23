@@ -2430,6 +2430,44 @@
 
   .channel-btn.is-active                   { border-width: calc(var(--ch-border-w) + 1px); border-color: var(--accent); }
 
+  /* ── Teaser slot (e.g. v2soon promo) — NOT a channel, just an icon.
+     No border, no glass background, no state rings. Click triggers a
+     one-shot rainbow radiate + print overlay. */
+  .channel-btn.is-teaser {
+    border: none;
+    background: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    cursor: pointer;
+    opacity: 0.95;
+  }
+  .channel-btn.is-teaser:hover { transform: scale(1.1); opacity: 1; }
+  .channel-btn.is-teaser::after { content: none !important; } /* no state rings */
+  .channel-btn.is-teaser .ch-icon { filter: none; }
+
+  /* One-shot rainbow radiate: outer conic-gradient halo swells then fades. */
+  .channel-btn.is-teaser.is-rainbow::before {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      #ff3b3b, #ff9a00, #ffee00, #3bff6b,
+      #00d4ff, #7b5bff, #ff3be8, #ff3b3b
+    );
+    filter: blur(6px);
+    opacity: 0;
+    z-index: -1;
+    animation: ch-rainbow-radiate 1s ease-out 1;
+    pointer-events: none;
+  }
+  @keyframes ch-rainbow-radiate {
+    0%   { opacity: 0;    transform: scale(0.6) rotate(0deg);   }
+    30%  { opacity: 0.95; transform: scale(1.15) rotate(120deg); }
+    70%  { opacity: 0.7;  transform: scale(1.3)  rotate(260deg); }
+    100% { opacity: 0;    transform: scale(1.6)  rotate(360deg); }
+  }
+
   @keyframes ch-spin  { to   { transform: rotate(360deg); } }
   @keyframes ch-pulse { 0%,100% { opacity: 0.9;  transform: scale(1); }
                         50%     { opacity: 0.35; transform: scale(1.14); } }
@@ -2562,16 +2600,20 @@
   .debugv2-panel .dv2-ctx b { color: var(--accent); }
   .debugv2-panel .dv2-row {
     display: grid;
-    grid-template-columns: 76px 1fr 44px;
+    grid-template-columns: 64px minmax(0, 1fr) 42px;
     align-items: center;
     gap: 6px;
     margin-bottom: 4px;
   }
-  .debugv2-panel .dv2-row label { color: var(--muted); font-size: 9px; }
+  .debugv2-panel .dv2-row label {
+    color: var(--muted); font-size: 9px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
   .debugv2-panel .dv2-row input[type="range"] {
     -webkit-appearance: none; appearance: none;
     background: rgba(255,255,255,0.08); height: 3px; border-radius: 0;
     outline: none; margin: 0;
+    width: 100%; min-width: 0;
   }
   .debugv2-panel .dv2-row input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
@@ -6696,12 +6738,34 @@ window.Channels = (function () {
       icon: null, hollow: true, sticker: 'IN-CONSTRUCTION', stickerShort: 'WIP' },
     { id: 'ch-04',   label: 'NULL',
       icon: null, hollow: true, sticker: 'IN-CONSTRUCTION', stickerShort: 'WIP' },
+    // 5th slot — NOT a channel. Promo/teaser for v2. No border wrapper.
+    // Click: one-shot rainbow radiate + print overlay "WSI・V2 is coming soon!".
+    { id: 'v2soon',  label: 'WSI V2 — COMING SOON',
+      icon: 'elements/v2soon-channel.png', teaser: true,
+      printMsg: 'WSI\u30FBV2 is coming soon!' },
   ];
   const STATES = ['inactive','scanning','syncing','active'];
   const variantCache = new Map(); // `${id}:${state}` -> url | null (probed)
 
+  // Production icon base: R2 (served via the afest-assets-gate Worker, no
+  // signing needed — images bypass). Dev/local host → relative path (Worker
+  // would 403 anyway due to referer check). On prod, failed R2 fetch falls
+  // back to the local path so the player still renders if a drop is pending.
+  function isDevHost() {
+    const h = location.hostname;
+    return h === 'localhost' || h === '127.0.0.1' || h === '' ||
+           location.protocol === 'file:' ||
+           /^192\.168\./.test(h) || /^10\./.test(h);
+  }
+  function iconUrl(relPath) {
+    if (!relPath) return null;
+    if (isDevHost()) return relPath;
+    return 'https://assets.afest.io/twysted/radio/' + relPath;
+  }
+
   function probe(url) {
     return new Promise(resolve => {
+      if (!url) return resolve(null);
       const img = new Image();
       img.onload  = () => resolve(url);
       img.onerror = () => resolve(null);
@@ -6711,12 +6775,17 @@ window.Channels = (function () {
   async function iconFor(def, state) {
     if (!def.icon) return null;
     const key = `${def.id}:${state}`;
-    if (variantCache.has(key)) return variantCache.get(key) || def.icon;
+    if (variantCache.has(key)) return variantCache.get(key) || iconUrl(def.icon);
     const variant = def.icon.replace(/\.(png|webp|jpg)$/i, `-${state}.$1`);
-    if (variant === def.icon) { variantCache.set(key, null); return def.icon; }
-    const found = await probe(variant);
-    variantCache.set(key, found);
-    return found || def.icon;
+    // 1) Try state-specific variant (R2 → local).
+    if (variant !== def.icon) {
+      const v = await probe(iconUrl(variant)) || await probe(variant);
+      if (v) { variantCache.set(key, v); return v; }
+    }
+    // 2) Base icon: prefer R2, fall back to local relative path.
+    const b = await probe(iconUrl(def.icon)) || await probe(def.icon);
+    variantCache.set(key, null);
+    return b || def.icon;
   }
 
   function render() {
@@ -6732,7 +6801,8 @@ window.Channels = (function () {
       btn.setAttribute('aria-label', def.label);
       if (def.hollow)   btn.classList.add('is-hollow');
       if (def.disabled) btn.classList.add('is-disabled');
-      if (!def.hollow && !def.disabled) btn.classList.add(`is-${def.state || 'inactive'}`);
+      if (def.teaser)   btn.classList.add('is-teaser');
+      if (!def.hollow && !def.disabled && !def.teaser) btn.classList.add(`is-${def.state || 'inactive'}`);
       // hollow buttons still carry an is-inactive equivalent so state reads are uniform
       if (def.hollow || def.disabled) btn.setAttribute('aria-disabled', 'true');
 
@@ -6774,6 +6844,21 @@ window.Channels = (function () {
   function onClick(id) {
     const def = defs.find(d => d.id === id);
     if (!def) return;
+    // Teaser slot → one-shot rainbow + print overlay. Not a real channel.
+    if (def.teaser) {
+      const btn = document.querySelector(`.channel-btn[data-channel-id="${id}"]`);
+      if (btn) {
+        btn.classList.remove('is-rainbow');
+        void btn.offsetWidth; // restart the keyframes if spam-clicked
+        btn.classList.add('is-rainbow');
+        clearTimeout(btn._rainbowT);
+        btn._rainbowT = setTimeout(() => btn.classList.remove('is-rainbow'), 1050);
+      }
+      if (def.printMsg && typeof showPrintOverlay === 'function') {
+        showPrintOverlay(def.printMsg, null);
+      }
+      return;
+    }
     // Disabled / hollow → tap reveals the sticker for ~2.4 s (mobile has no hover).
     // Desktop hover/focus reveals via CSS; the class just mirrors that behavior on tap.
     if (def.hollow || def.disabled) {
@@ -10786,12 +10871,97 @@ function updateBrandLabel() {
   if (lbl) lbl.textContent = pickBrandLabel();
 }
 
-// bar-title short variant (all langs collapse to "RADIO" at <=640px)
-function updateBarTitle() {
-  const barTitle = document.getElementById('barTitle');
-  if (!barTitle) return;
-  barTitle.textContent = (window.innerWidth <= 640) ? 'RADIO' : t('bar-title');
-}
+// bar-title — 7-tier measure-to-fit per language. Pick the longest tier that
+// actually fits between the back-link and the Settings button. Thin spaces
+// (U+2009) on intermediate tiers tighten long forms so they survive one more
+// breakpoint before collapsing. Langs without a tier table fall back to the
+// existing i18n 'bar-title' on wide + "RADIO" on narrow.
+(function () {
+  const THIN = '\u2009';
+  window._BAR_TITLE_TIERS = {
+    en: [
+      'WAVE\u30FBISOLATE RADIO RECEIVER',
+      'WAVE\u30FBISOLATE' + THIN + 'RADIO' + THIN + 'RECIVER',
+      'WAVE\u30FBISOLATE' + THIN + 'RADIO',
+      'WAVE\u30FBISOLATE' + THIN + 'RDIO',
+      'WSI\u30FBRADIO',
+      'WSI\u30FBRDIO',
+      'WSI RDIO',
+    ],
+    ja: [
+      '\u6CE2\u30FB\u30A2\u30A4\u30BD\u30EC\u30FC\u30C8' + THIN + '\u30E9\u30B8\u30AA\u53D7\u4FE1\u6A5F',
+      '\u6CE2\u30FB\u30A2\u30A4\u30BD\u30EC\u30FC\u30C8' + THIN + '\u30E9\u30B8\u30AA',
+      '\u6CE2\u30FB\u30A2\u30A4\u30BD\u30EC\u30FC\u30C8' + THIN + '\uFF97\uFF7C\uFF9E\uFF75', // ﾗｼﾞｵ (halfwidth)
+      '\u6CE2\u30FB\uFF71\uFF72\uFF7C\uFF9F\uFF9A\uFF70\uFF84' + THIN + '\uFF97\uFF7C\uFF9E\uFF75', // 波・ｱｲｿﾚｰﾄ ﾗｼﾞｵ
+      'WSI\u30FBRADIO',
+      'WSI\u30FBRDIO',
+      'WSI RDIO',
+    ],
+    de: [
+      'WAVE\u30FBISOLATE' + THIN + 'FUNKEMPF\u00C4NGER',
+      'WAVE\u30FBISOLATE' + THIN + 'EMPF\u00C4NGER',
+      'WAVE\u30FBISOLATE' + THIN + 'FUNK',
+      'WAVE\u30FBISOLATE' + THIN + 'RX',
+      'WSI\u30FBRADIO',
+      'WSI\u30FBFUNK',
+      'WSI RX',
+    ],
+  };
+
+  let _measureCtx = null;
+  function measureTier(text, font, letterSpacingPx) {
+    if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+    _measureCtx.font = font;
+    // canvas measureText ignores letter-spacing — approximate by adding
+    // (chars - 1) * letterSpacing to the base measurement.
+    const base = _measureCtx.measureText(text).width;
+    return base + Math.max(0, text.length - 1) * (letterSpacingPx || 0);
+  }
+
+  function availableWidth(barTitle) {
+    // Space between back-link (left) and hamburger (right), both in .top-bar.
+    // Title is centered via position:absolute; the bar-title CAN overflow that
+    // region visually (centered on viewport), so the tighter bound is what
+    // leaves 8px breathing room on whichever side is closer to the viewport edge.
+    const bar = document.querySelector('.top-bar');
+    if (!bar) return window.innerWidth - 160;
+    const back  = bar.querySelector('.back-link');
+    const hamb  = bar.querySelector('.bar-hamburger');
+    const barR  = bar.getBoundingClientRect();
+    const backR = back ? back.getBoundingClientRect() : null;
+    const hambR = hamb ? hamb.getBoundingClientRect() : null;
+    const centerX = barR.left + barR.width / 2;
+    const MARGIN = 10;
+    const leftLimit  = backR ? (backR.right + MARGIN) : (barR.left + MARGIN);
+    const rightLimit = hambR ? (hambR.left  - MARGIN) : (barR.right - MARGIN);
+    // Half-widths from center, the tighter side wins.
+    const halfL = centerX - leftLimit;
+    const halfR = rightLimit - centerX;
+    return Math.max(40, 2 * Math.min(halfL, halfR));
+  }
+
+  window.updateBarTitle = function updateBarTitle() {
+    const barTitle = document.getElementById('barTitle');
+    if (!barTitle) return;
+    const lang = document.documentElement.lang || 'en';
+    const tiers = window._BAR_TITLE_TIERS[lang];
+    if (!tiers) {
+      // Legacy fallback: i18n bar-title on wide, generic "RADIO" on narrow.
+      barTitle.textContent = (window.innerWidth <= 640) ? 'RADIO' : t('bar-title');
+      return;
+    }
+    const style = getComputedStyle(barTitle);
+    const font  = style.fontStyle + ' ' + style.fontVariant + ' ' + style.fontWeight + ' ' +
+                  style.fontSize + ' ' + (style.fontFamily || 'sans-serif');
+    const ls = parseFloat(style.letterSpacing) || 0;
+    const avail = availableWidth(barTitle);
+    for (let i = 0; i < tiers.length; i++) {
+      const w = measureTier(tiers[i], font, ls);
+      if (w <= avail) { barTitle.textContent = tiers[i]; return; }
+    }
+    barTitle.textContent = tiers[tiers.length - 1];
+  };
+})();
 
 // hook into applyLang so re-translation keeps top-bar responsive
 (function wrapApplyLang() {
