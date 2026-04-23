@@ -2433,13 +2433,11 @@
   /* ── Teaser slot (e.g. v2soon promo) — NOT a channel, just an icon.
      No border, no glass background, no state rings. Click triggers a
      one-shot rainbow radiate + print overlay.
-     Visual weight parity: the teaser's outer dimensions match a bordered
-     channel button's OUTER border edge (content + 2×border on each side),
-     and the icon fills the full circle (inset: 0) so its top + bottom
-     align with the bordered neighbors' orange-ring outer edges. */
+     Visual weight parity: with global box-sizing: border-box, a bordered
+     channel button's OUTER orange-ring edge == its full --ch-btn-size span.
+     So the teaser keeps --ch-btn-size and its icon fills inset:0 — the
+     icon's top/bottom align exactly with the neighbors' outer-ring edges. */
   .channel-btn.is-teaser {
-    width:  calc(var(--ch-btn-size) + 2 * var(--ch-border-w));
-    height: calc(var(--ch-btn-size) + 2 * var(--ch-border-w));
     border: none;
     background: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
