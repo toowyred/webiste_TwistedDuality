@@ -8407,9 +8407,21 @@ const PrintImages = {
     try {
       const r = await fetch(cbUrl(this.base + 'index.json'), { cache: 'no-cache' });
       if (!r.ok) return;       // no manifest → no images; tokens render as [img:name] placeholders
-      const data = await r.json();
+      const text = await r.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (parseErr) {
+        // Surface authoring mistakes visibly — a missing comma in the manifest
+        // silently wipes every <img> token across all tracks (everything falls
+        // back to "[img: name]"). Log + show the snippet so the author can spot
+        // the problem without cracking devtools open.
+        console.error('[radio] print/index.json is not valid JSON — ' + parseErr.message,
+                      '\n  snippet:', text.slice(0, 240));
+        return;
+      }
       if (Array.isArray(data)) this.manifest = data;
-    } catch (_) { /* silent */ }
+    } catch (_) { /* silent — network or CORS */ }
   },
 
   // Basename → full filename (lightest ext). null if not found.
@@ -10562,6 +10574,19 @@ const CodesRegistry = {
           engine.mediaEl.currentTime = Math.max(0, skipSec);
           if (typeof TimelineRunner !== 'undefined') TimelineRunner.catchUpTo(skipSec);
         } catch (_) {}
+      }
+      // Fail-safe meta-refresh — sidecars (cf-signal.dat, track-links, print
+      // manifest) can serve stale through CF edge even after a purge, which
+      // leaves TRACK INFO showing the old title/origin. 500 ms after the
+      // code-unlocked track starts playing, silently re-fetch everything and
+      // re-apply. Uses the existing `?` double-tap code path so audio never
+      // hiccups. No-op if another code fires before the timer elapses (we
+      // clear the prior handle first).
+      if (ok && typeof refreshMetadataWatchdog === 'function') {
+        clearTimeout(CodesRegistry._postLoadRefreshT);
+        CodesRegistry._postLoadRefreshT = setTimeout(() => {
+          refreshMetadataWatchdog().catch(() => {/* silent */});
+        }, 500);
       }
     } else if (target === 'debugMode') {
       const dbg = document.getElementById('debugPanel');
