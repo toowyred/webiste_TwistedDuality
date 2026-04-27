@@ -2967,17 +2967,17 @@
       <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
       <!-- v1.6 — current release -->
       <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-      <p><strong>v1.6</strong> &middot; small but mighty. Mostly under-the-hood plumbing that should make the player feel more reliable than v1.5.</p>
+      <p><strong>v1.6 &middot; Small but Mighty</strong></p>
 
-      <p><strong>The metadata-disappears bug is dead.</strong> If you ever opened the radio and watched the track name go blank for no reason, that was the listener pipeline missing a beat. Rewrote it as a pure derivation: every render reads from the timeline directly, no cached state to go stale. No more dead-air title cards.</p>
+      <p>This one is all about the plumbing. I've been under the hood making sure the engine doesn't miss a beat while you're in the zone:</p>
 
-      <p><strong>Tighter SCAN button.</strong> Rapid taps used to race against each other &mdash; sometimes a stale fetch would land last and overwrite the track you actually wanted. Added a generation token so any out-of-order resolve gets dropped silently. Spam SCAN; only the latest one wins.</p>
+      <p><strong>RIP Metadata Bug:</strong> Ever had the track name get stuck from prev track? I rewrote the listener, that roach is dead now, no ghosts in the machine.</p>
 
-      <p><strong>Auto-watchdog reconciliation.</strong> The player now self-checks the displayed text against expected text every half-second. If anything ever drifts (throttled tab catching up, weird race), it repairs itself in &lt;500&nbsp;ms instead of waiting for you to refresh.</p>
+      <p><strong>Spam-Proof SCAN:</strong> Added a generation token to the SCAN button. Now, if you spam it, go ahead. It won't break. ;)</p>
 
-      <p><strong>Capability detect under the hood.</strong> The player now classifies your device as lite / medium / full at boot &mdash; no behavior change yet, but it sets the stage for richer per-device defaults coming soon (e.g. heavier eye-candy auto-on for desktop, auto-off for data-saver mode).</p>
+      <p><strong>Auto-Watchdog:</strong> WSI RX now self-heals every 500&nbsp;ms. If the text drifts while your tab is throttled, it repairs itself before you even notice.</p>
 
-      <p><strong>Paving a pathway for BIG v2.0 update.</strong> Everything above is groundwork. v2.0 is being built in parallel as a separate skyscraper &mdash; multi-artist Satellites, offline Auto-DJ engine, the works &mdash; and the v1.6 fixes are the foundation patterns the same code lineage will sit on. Stay tuned.</p>
+      <p><strong>v2.0 Groundwork:</strong> I'm building a skyscraper for the BIG v2.0 (Better engine, offline Auto-DJ, multi-artist satellites). v1.6 is the foundation for that lineage. Stay tuned.</p>
 
       <p class="pw-regards">
         Catch you in the mix,<br>
@@ -2991,23 +2991,19 @@
       <!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
       <hr style="border: none; border-top: 1px solid var(--accent-dim); margin: 28px 0 20px; opacity: 0.6;">
 
-      <p><strong>v1.5</strong> &middot; since the pitch-wobble notice. Faster, cleaner, and more immersive.</p>
+      <p><strong>v1.5 &middot; Faster, Cleaner, Immersive</strong></p>
 
-      <p><strong>THE VISUAL UPGRADE</strong></p>
+      <p>The one where the visuals caught up to the audio:</p>
 
-      <p><strong>Cleaner controls.</strong> On mobile, SCAN, PLAY, and the transport icons shrank to tidy tiles so the track name can stretch the full width of the readout. You'll always know exactly what's in the mix at a glance.</p>
+      <p><strong>Tidy Tiles:</strong> I shrank icons on mobile into sleek tiles. More room for long track names, better vibes at a glance.</p>
 
-      <p><strong>Reflection FX.</strong> Want the premium Gamer-PC aesthetic? Head to <strong>Settings &rarr; Waves &rarr; Reflection</strong>. The waveform mirrors below its horizon into a reflective pool, and the tuner panel fades to match the top-bar &mdash; the whole player reads as a single sheet of glass. Off by default; flip it on when you're in the mood.</p>
+      <p><strong>Reflection FX:</strong> Want that premium "Power PC" look? Check <strong>Settings &rarr; Waves &rarr; Reflection</strong>. It turns the floor into a mirror. Bam! LiquidGlass, jk. Don't yell at me if your phone gets hot.</p>
 
-      <p><strong>UNDER THE HOOD</strong></p>
+      <p><strong>Block-Loading:</strong> Instead of waiting for the whole library, the catalog now drops in chunks of 10. Snappier "first paint," smoother browsing.</p>
 
-      <p><strong>Block-loading.</strong> Instead of waiting for the whole library to load, the catalog now arrives in chunks of ten tracks. Way snappier first paint, and browsing stays smooth as the library grows. Bonus: if the main CDN ever hiccups, the player quietly falls through to a committed backup &mdash; you'll still hear something.</p>
+      <p><strong>Camelot Wheel:</strong> Tap the <strong>KEY</strong> readout to see your harmonic matches glow. It's a taste of the mixing tools coming in a "big" update.</p>
 
-      <p><strong>Rock-solid stability.</strong> Hand-tuned profiles for common mobile devices (iPhone 17 Pro in particular) so layouts look right without touching a setting. Closed a real security hole in the subtitle renderer. Disabled accidental pull-to-refresh + double-tap zoom on mobile, so you can't swipe yourself out of a song.</p>
-
-      <p><strong>Browser smart-detect.</strong> If you're reading this inside Instagram, Facebook, or TikTok's built-in browser, a little nudge pointed you toward Safari (iOS) or Chrome (Android). Those embedded browsers throttle audio and animation hard &mdash; switching unlocks the full, high-fidelity experience.</p>
-
-      <p><strong>Harmonic Mixing (preview).</strong> Tap the <strong>KEY</strong> readout to open the Camelot Wheel. Your current key's wedge glows in the accent color while every harmonically-compatible key dims in sync &mdash; spot your next perfect mix candidate at a glance. This is a taste of what's coming in v2, so stay tuned.</p>
+      <p><strong>Mobile Hand-Tuned:</strong> Hand-rolled profiles so it looks pristine out of the box. I also closed few security holes, and killed those annoying accidental "zoom" gestures.</p>
     </div><!-- /.playback-info-body--updates -->
     </div><!-- /.playback-info-scroll -->
     <button class="playback-info-close" id="playbackInfoClose" type="button">[ CLOSE ]</button>
